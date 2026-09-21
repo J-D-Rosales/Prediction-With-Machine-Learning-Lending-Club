@@ -1,0 +1,65 @@
+# ==============================================================================
+# Python Virtual Environments
+# ==============================================================================
+# Excludes the heavy, machine-specific environment folders
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+data/*
+!data/README.md
+!data/*.md
+
+# Ignorar archivos de checkpoints e historia de Jupyter
+.ipynb_checkpoints/
+__pycache__/
+
+# ==============================================================================
+# Python Bytecode and Caching
+# ==============================================================================
+# Excludes compiled files that regenerate automatically
+*.py[cod]
+*$py.class
+*.so
+
+# ==============================================================================
+# Environment Variables & Secrets
+# ==============================================================================
+# NEVER commit your private API keys or database credentials
+.env
+.env.local
+.env.*
+
+# ==============================================================================
+# Packaging & Distributions
+# ==============================================================================
+# Excludes local build outputs
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ==============================================================================
+# IDEs and Editors (Optional but highly recommended)
+# ==============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
