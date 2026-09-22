@@ -4,7 +4,7 @@
 Modelo de Machine Learning para la Predicción de Incumplimiento de Pagos (Default) en Préstamos de Lending Club.
 
 ## 2. Integrantes
-- [Nombre Integrante 1]
+- Farid Jack Aquino Castro - 202410569
 - [Nombre Integrante 2]
 - [Nombre Integrante 3]
 
@@ -53,10 +53,84 @@ Se seleccionarán únicamente variables conocidas en el momento en que se solici
 - `dti` (Debt-to-Income): Relación entre deuda total e ingreso.
 
 ## 8. Riesgos de Leakage (Fuga de Datos)
-Existen columnas que recogen información generada **después** de otorgado el préstamo y que revelan el resultado de pago[cite: 1]. Estas serán eliminadas para evitar sesgos:
-- `total_pymnt` / `total_rec_prncp` (Pagos recibidos acumulados).
-- `recoveries` / `collection_recovery_fee` (Montos cobrados por cobranza judicial).
-- `last_pymnt_amnt` / `last_pymnt_d` (Último pago realizado).
+
+Definimos como **Data leekage** la información que no estaría disponible en el momento de hacer la predicción. Son datos que derivan luego de nuestro **target**, por lo cual, si entrenamos el modelo con con esta inforamación nuestro error será minimo y no aprenderá a relacionar de manera adecuada nuestro target con los features.
+
+**Tipos considerados:**
+ 
+| Tipo | Descripción |
+|---|---|
+| **Temporal** | La variable se registra o actualiza **después** de la emisión del préstamo. |
+| **Definicional** | La variable es **consecuencia directa** del resultado: solo existe, o solo toma ciertos valores, si el préstamo pagó o incumplió. |
+
+En nuestro base de datos, a carencia de un diccionario de datos, realizamos un análisis intutito de las variables para obtener los posibles **Leakages**.
+
+### 8.1 Pagos acumulados y saldo pendiente
+ 
+| Variable | Definición intuitiva | Tipo | Por qué es leakage |
+|---|---|---|---|
+| `total_pymnt` | Monto total pagado por el prestatario hasta la fecha de extracción (capital + intereses + moras). | Temporal / Definicional | Se acumula durante la vida del préstamo. Un Fully Paid pagó todo; un Charged Off pagó menos de lo debido. |
+| `total_pymnt_inv` | Parte de `total_pymnt` correspondiente a la porción financiada por inversionistas. | Temporal / Definicional | Misma lógica que `total_pymnt`. |
+| `total_rec_prncp` | Capital (principal) recibido hasta la fecha. | Temporal / Definicional | En un Fully Paid es igual a `funded_amnt`; en un Charged Off siempre es menor. Separa las clases casi perfectamente. |
+| `total_rec_int` | Intereses recibidos hasta la fecha. | Temporal / Definicional | Depende de cuántos meses pagó el prestatario, lo cual revela cuánto duró el préstamo antes de terminar. |
+| `total_rec_late_fee` | Penalidades por pago tardío cobradas hasta la fecha. | Temporal | Registra demoras ocurridas después de la emisión. Es más frecuente en préstamos que terminan castigados. |
+| `out_prncp` | Capital pendiente de pago a la fecha de extracción. | Temporal | Se calcula después de la emisión. En préstamos terminados es ≈ 0 en ambas clases, por lo que además no aporta información útil. |
+| `out_prncp_inv` | Parte de `out_prncp` correspondiente a inversionistas. | Temporal | Misma lógica que `out_prncp`. |
+ 
+### 8.2 Fin del ciclo y recuperación
+ 
+| Variable | Definición intuitiva | Tipo | Por qué es leakage |
+|---|---|---|---|
+| `recoveries` | Monto recuperado mediante cobranza **después** de castigar el préstamo. | Definicional | Solo es > 0 si el préstamo fue Charged Off: `recoveries > 0` implica `target = 1`. |
+| `collection_recovery_fee` | Comisión cobrada por la gestión de cobranza sobre lo recuperado. | Definicional | Solo existe si hubo recuperaciones, es decir, si hubo castigo. |
+| `last_pymnt_d` | Fecha del último pago recibido. | Temporal | `last_pymnt_d − issue_d` da la duración real del préstamo. Los Charged Off duran mucho menos que su plazo (`term`). |
+| `last_pymnt_amnt` | Monto del último pago recibido. | Temporal / Definicional | En un Fully Paid suele ser grande (liquidación del saldo); en un Charged Off es una cuota normal o pequeña. |
+ 
+### 8.3 Información crediticia actualizada
+ 
+| Variable | Definición intuitiva | Tipo | Por qué es leakage |
+|---|---|---|---|
+| `last_credit_pull_d` | Fecha más reciente en que Lending Club consultó el reporte de crédito del prestatario. | Temporal | Es una fecha posterior a la emisión del préstamo. |
+| `last_fico_range_high` | Límite superior del rango FICO en la **última** consulta de crédito. | Temporal | El FICO cae bruscamente cuando el prestatario deja de pagar, así que refleja el resultado en lugar de predecirlo. La versión legítima es `fico_range_high` (FICO en la solicitud). |
+| `last_fico_range_low` | Límite inferior del rango FICO en la **última** consulta de crédito. | Temporal | Misma lógica. La versión legítima es `fico_range_low`. |
+ 
+### 8.4 Programa de dificultades (hardship)
+ 
+Son variables sobre planes de alivio que Lending Club ofrece a prestatarios con problemas de pago **durante** la vida del préstamo.
+ 
+| Variable | Definición intuitiva | Tipo | Por qué es leakage |
+|---|---|---|---|
+| `pymnt_plan` | Indica si el préstamo tiene un plan de pagos especial activo. | Temporal | El plan se activa después de la emisión, cuando aparecen dificultades de pago. |
+| `hardship_flag` | Indica si el prestatario ingresó a un programa de dificultades. | Temporal / Definicional | Ingresar al programa implica problemas de pago posteriores a la aprobación. |
+| `hardship_type` | Tipo de plan de alivio otorgado. | Temporal | Solo existe si hubo ingreso al programa. |
+| `hardship_reason` | Motivo declarado de la dificultad (p. ej., desempleo, gastos médicos). | Temporal | Evento posterior a la emisión. |
+| `hardship_status` | Estado del plan (activo, completado, incumplido). | Temporal / Definicional | Un plan incumplido anticipa directamente el castigo. |
+| `deferral_term` | Número de meses de pago diferido otorgados. | Temporal | Condición del plan, definida después de la emisión. |
+| `hardship_amount` | Monto de pago reducido durante el plan. | Temporal | Condición del plan. |
+| `hardship_start_date` | Fecha de inicio del plan. | Temporal | Fecha posterior a la emisión. |
+| `hardship_end_date` | Fecha de fin del plan. | Temporal | Fecha posterior a la emisión. |
+| `payment_plan_start_date` | Fecha de inicio de los pagos bajo el plan. | Temporal | Fecha posterior a la emisión. |
+| `hardship_length` | Duración del plan en meses. | Temporal | Condición del plan. |
+| `hardship_dpd` | Días de atraso del préstamo al ingresar al plan. | Temporal / Definicional | Mide directamente el incumplimiento en curso. |
+| `hardship_loan_status` | Estado del préstamo al ingresar al plan (p. ej., Late). | Temporal / Definicional | Registra el estado de mora del préstamo, muy cercano al target. |
+| `orig_projected_additional_accrued_interest` | Interés adicional proyectado por el diferimiento de pagos. | Temporal | Se calcula al crear el plan. |
+| `hardship_payoff_balance_amount` | Saldo pendiente al inicio del plan. | Temporal | Refleja cuánto se pagó antes de entrar en dificultades. |
+| `hardship_last_payment_amount` | Último pago realizado al ingresar al plan. | Temporal | Dato de pagos posterior a la emisión. |
+ 
+### 8.5 Acuerdos de liquidación de deuda (settlement)
+ 
+Son variables sobre acuerdos para pagar un monto reducido de una deuda **ya castigada**.
+ 
+| Variable | Definición intuitiva | Tipo | Por qué es leakage |
+|---|---|---|---|
+| `debt_settlement_flag` | Indica si el prestatario castigado negoció o trabaja con una empresa de liquidación de deuda. | Definicional | Solo aplica a préstamos castigados, por lo que implica `target = 1`. |
+| `debt_settlement_flag_date` | Fecha en que se registró la marca de liquidación. | Temporal / Definicional | Posterior al castigo. |
+| `settlement_status` | Estado del acuerdo (activo, completado, incumplido). | Definicional | Solo existe si hubo acuerdo sobre deuda castigada. |
+| `settlement_date` | Fecha en que se pactó el acuerdo. | Temporal / Definicional | Posterior al castigo. |
+| `settlement_amount` | Monto que el prestatario acordó pagar. | Definicional | Solo existe con deuda castigada. |
+| `settlement_percentage` | Porcentaje del saldo adeudado que representa el acuerdo. | Definicional | Solo existe con deuda castigada. |
+| `settlement_term` | Número de meses del plan de liquidación. | Definicional | Solo existe con deuda castigada. |
+ 
 
 ## 9. Métrica Principal y Secundaria
 - **Métrica Principal:** `ROC-AUC` (Evalúa la capacidad de ordenamiento y separación entre clientes buenos y malos).
