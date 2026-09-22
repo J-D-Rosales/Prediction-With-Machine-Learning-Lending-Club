@@ -9,9 +9,22 @@ Modelo de Machine Learning para la Predicción de Incumplimiento de Pagos (Defau
 - [Nombre Integrante 3]
 
 ## 3. Dataset Elegido
+
 - **Nombre:** Lending Club Loan Data (Opción B)
 - **Fuente:** Kaggle / Lending Club
-- **Descripción:** Contiene registros de solicitudes e historial de préstamos aprobados, con variables socioeconómicas y métricas financieras de los prestatarios.
+- **Tipo de problema:** Clasificación binaria supervisada.
+
+El dataset fue seleccionado debido a su tamaño y complejidad, adecuados para abordar un problema real de riesgo crediticio.
+
+En la exploración inicial se identificaron 2,260,701 registros y 151 variables en el conjunto de préstamos aceptados. Para el problema predictivo se consideraron únicamente los préstamos con estado final `Fully Paid` o `Charged Off`, obteniéndose 1,345,310 observaciones.
+
+La variable objetivo se definió como:
+- `0`: Fully Paid
+- `1`: Charged Off
+
+La distribución obtenida fue aproximadamente 80.04% de préstamos `Fully Paid` y 19.96% de préstamos `Charged Off`, evidenciando un desbalance de clases que deberá ser considerado durante el modelado y evaluación.
+
+Además, la exploración inicial permitió identificar valores faltantes, registros atípicos y variables que podrían generar data leakage si contienen información posterior al otorgamiento del préstamo. Estas características hacen que el dataset represente un problema de datos reales y permitan evaluar diferentes estrategias de Machine Learning.
 
 ## 4. Pregunta Predictiva
 ¿Cuál es la probabilidad de que un cliente caiga en mora grave o incumplimiento de pago (`Charged Off`) antes de finalizar el plazo de su préstamo?
