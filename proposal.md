@@ -149,9 +149,15 @@ Son variables sobre acuerdos para pagar un monto reducido de una deuda **ya cast
 - **Evaluación:** usaremos validación para fijar el umbral de decisión y reportaremos en prueba ROC-AUC, PR-AUC, recall y precisión según la sección 9. El baseline que aparece actualmente en el notebook emplea otras variables y una partición distinta; sus resultados guardados son preliminares y deberán recalcularse antes de compararlos con esta propuesta.
 
 ## 12. Riesgos Técnicos
-- **Volumen de Datos:** Archivos pesados que requieren gestión adecuada de memoria RAM.
-- **Desbalance de Clases:** La mayoría de préstamos son pagados, por lo que los defaults son la clase minoritaria.
-- **Valores Faltantes:** Alto porcentaje de nulos en variables de historial crediticio secundario[cite: 1].
+
+| Riesgo | Consecuencia | Medida prevista |
+|---|---|---|
+| Fuga de datos | Variables generadas por la aprobación o durante la vida del préstamo podrían producir métricas artificialmente altas. | Usar solo variables disponibles en el instante definido en la sección 7 y contrastar cada incorporación con la auditoría de variables y los riesgos de la sección 8. |
+| Sesgo de selección y resultados aún no observados | El dataset contiene préstamos aprobados y el modelado excluye los que siguen `Current`; las métricas pueden no representar solicitudes rechazadas ni préstamos recientes. | Delimitar la población evaluada, informar la proporción de resultados definitivos por cohorte y no interpretar una partición temporal reciente como prueba imparcial si aún no ha madurado. |
+| Nulos y cobertura cambiante por año | Algunas variables no existían en los años antiguos; en otras, un valor vacío puede significar que no ocurrió un evento crediticio, no que su valor sea cero. | Revisar cobertura por `issue_d` y el significado de los nulos antes de añadir cada variable. Ajustar la imputación únicamente con entrenamiento y no reemplazar automáticamente todos los vacíos por cero. |
+| Valores extremos y escalas diferentes | Ingresos, saldos y ratios extremos pueden afectar el ajuste de la regresión logística. | Inspeccionar sus distribuciones y comparar tratamientos robustos cuando sea necesario; calcular cualquier transformación solo con entrenamiento y aplicarla sin cambios a validación y prueba. |
+| Desbalance de clases | Cerca del 20 % de los préstamos con resultado definitivo son `Charged Off`; una exactitud alta podría ocultar una detección deficiente de incumplimientos. | Evaluar ROC-AUC y PR-AUC, y reportar recall junto con precisión usando un umbral elegido en validación, como establece la sección 9. |
+| Volumen y reproducibilidad | Los 2,260,701 registros y 151 columnas elevan el uso de memoria; los datos externos, rutas y dependencias pueden impedir que otro integrante reproduzca el notebook. | Trabajar con las columnas necesarias y formatos de lectura eficientes; documentar la obtención de datos y el entorno, fijar semillas y comprobar la ejecución completa del notebook desde una sesión limpia. |
 
 ## 13. Plan de Trabajo (Semanas Restantes)
 - **Semana 1-2:** Finalización de EDA, tratamiento de outliers e imputación de faltantes[cite: 1].
