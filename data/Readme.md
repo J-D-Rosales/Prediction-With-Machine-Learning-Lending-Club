@@ -1,13 +1,8 @@
-# Instrucciones de Carga de Datos
+# Datos necesarios para los notebooks
 
-Debido a que los archivos comprimidos superan el límite de tamaño permitido por GitHub, el dataset **no** se incluye en este repositorio.
+Los archivos de datos no se incluyen en Git porque son grandes. Descárgalos desde [Lending Club Loan Data en Kaggle](https://www.kaggle.com/datasets/wordsforthewise/lending-club) y colócalos en esta carpeta con los siguientes nombres:
 
-## Instrucciones para obtener los datos:
+- `accepted_2007_to_2018Q4.csv.gz`: necesario para `notebooks/02_baseline_sin_leakage.ipynb`.
+- `rejected_2007_to_2018Q4.csv.gz`: necesario solo para volver a ejecutar `notebooks/01_exploración_inicial.ipynb`, que conserva la exploración histórica.
 
-1. Descarga el dataset original desde la competencia o dataset en Kaggle: [Lending Club Loan Data](https://www.kaggle.com/datasets/wordsforthewise/lending-club).
-2. Descarga o ubica los dos archivos `.gz` del dataset.
-3. Coloca los archivos descargados directamente en esta carpeta (`data/`):
-   - `data/archivo1.gz` (Asegúrate de ajustar el nombre en el notebook si varía)
-   - `data/archivo2.gz`
-
-> **Nota:** La carpeta `data/*.gz` y `data/*.csv` está ignorada en el archivo `.gitignore` para evitar subir archivos pesados por error al control de versiones.
+El notebook nuevo usa únicamente el archivo de préstamos aceptados. Los archivos `.gz` están excluidos por `.gitignore`; no los añadas al commit.

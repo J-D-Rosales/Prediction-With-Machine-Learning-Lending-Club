@@ -1,63 +1,75 @@
-# Prediction-With-Machine-Learning-Lending-Club - Proyecto Final Machine Learning
+# Predicción de riesgo crediticio con datos de Lending Club
 
-Este repositorio contiene la solución de Machine Learning desarrollada para evaluar el riesgo crediticio sobre el dataset de **Lending Club**.
+Este repositorio contiene la propuesta, la exploración inicial y un baseline de regresión logística para predecir `Charged Off` en préstamos de Lending Club.
 
 ## Estructura del Repositorio
 
 ```text
-proyecto-final/
-├── README.md               # Instrucciones de reproducción y descripción
-├── proposal.md             # Propuesta detallada del proyecto
-├── requirements.txt        # Dependencias del entorno de Python
-├── data/                   # Carpeta para almacenar los datasets (ignorada en git)
-│   └── README.md
-├── notebooks/              # Notebooks ordenados por fase
-│   └── 01_exploracion_inicial.ipynb
-├── src/                    # Código modular reutilizable
-│   ├── __init__.py
+Prediction-With-Machine-Learning-Lending-Club/
+├── README.md
+├── proposal.md
+├── requirements.txt
+├── data/
+│   └── Readme.md
+├── notebooks/
+│   ├── 01_exploración_inicial.ipynb    # EDA y baseline histórico
+│   └── 02_baseline_sin_leakage.ipynb   # Baseline vigente
+├── src/
 │   └── data.py
-└── reports/                # Informes y figuras generadas
+└── reports/
+    └── analisis_variables.md
 ```
 
-## Requisitos e Instalación
+## Instalación
 
-1. **Clonar el repositorio:**
+1. Clona el repositorio y entra en su carpeta:
+
 ```bash
-git clone git@github.com:J-D-Rosales/Prediction-With-Machine-Learning-Lending-Club.git
-cd Proyecto
+git clone https://github.com/J-D-Rosales/Prediction-With-Machine-Learning-Lending-Club.git
+cd Prediction-With-Machine-Learning-Lending-Club
 ```
 
+2. Crea un entorno virtual y actívalo. En macOS o Linux:
 
-2. **Crear y activar el entorno virtual:**
-* En Linux/Mac:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-* En Windows:
+En Windows:
+
 ```bash
 python -m venv venv
 venv\Scripts\activate
 ```
 
-3. **Instalar dependencias:**
-```bash
-pip install -r requirements.txt
+3. Instala las dependencias:
 
+```bash
+python -m pip install -r requirements.txt
 ```
 
-## Descarga de Datos
-Sigue las instrucciones descritas en [`data/README.md`] para descargar los archivos `.gz` desde Kaggle e incluirlos en la carpeta local `data/`.
+## Datos
 
-## Reproducción de la Exploración Inicial
-Para ejecutar la exploración inicial y el baseline de la **Entrega Previa**:
+Sigue las [instrucciones de descarga](data/Readme.md). Para ejecutar el baseline vigente solo se necesita `data/accepted_2007_to_2018Q4.csv.gz`; el archivo de solicitudes rechazadas no interviene en ese modelo.
 
-1. Inicia Jupyter Lab o Jupyter Notebook:
+## Ejecutar el baseline vigente
+
+Con el entorno activado y el archivo de datos en `data/`, inicia Jupyter desde la raíz del repositorio:
+
 ```bash
 jupyter lab
 ```
 
+Abre [`notebooks/02_baseline_sin_leakage.ipynb`](notebooks/02_baseline_sin_leakage.ipynb) y selecciona **Kernel → Restart & Run All**. El notebook lee solo las columnas necesarias del archivo de préstamos aceptados, divide los casos resueltos en entrenamiento/validación/prueba y muestra las métricas guardadas en sus salidas.
 
-2. Abre el notebook `notebooks/01_exploracion_inicial.ipynb`.
-3. Selecciona **Kernel -> Restart & Run All**.
+## Exploración inicial histórica
+
+[`notebooks/01_exploración_inicial.ipynb`](notebooks/01_exploración_inicial.ipynb) conserva el EDA y el primer baseline del equipo. Ese baseline utilizó `int_rate` e `installment`, que no cumplen el instante de predicción de la propuesta; sus resultados no son los del modelo vigente ni deben compararse directamente con él. Para volver a ejecutar la exploración completa se requieren tanto el archivo de préstamos aceptados como el de rechazados, además de configurar la raíz del repositorio en `PYTHONPATH` para importar `src.data` desde `notebooks/`.
+
+En macOS o Linux, con el entorno activado, se puede iniciar ese notebook desde la carpeta que esperan sus rutas relativas:
+
+```bash
+cd notebooks
+PYTHONPATH=.. jupyter lab
+```
