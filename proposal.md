@@ -37,20 +37,19 @@ Además, la exploración inicial permitió identificar valores faltantes, regist
 *(Nota: Se excluirán los préstamos que actualmente están en ejecución para evitar ambigüedad).*
 
 ## 6. Unidad de Predicción
-Un préstamo individual aprobado solicitado por un cliente.
+La unidad de predicción es una solicitud de préstamo, evaluada antes de la decisión de aprobación. El entrenamiento y la evaluación usan únicamente préstamos históricamente aprobados; sus resultados no se extrapolan automáticamente a las solicitudes rechazadas.
 
 ## 7. Variables Disponibles Antes de la Predicción
-Se seleccionarán únicamente variables conocidas en el momento en que se solicita o evalúa la solicitud crediticia:
-- `loan_amnt`: Monto del préstamo solicitado.
-- `term`: Plazo (36 o 60 meses).
-- `int_rate`: Tasa de interés asignada.
-- `installment`: Cuota mensual.
-- `grade` / `sub_grade`: Calificación de riesgo interna.
-- `emp_length`: Antigüedad laboral.
-- `home_ownership`: Tipo de vivienda (Propia, Alquilada, Hipotecada).
-- `annual_inc`: Ingreso anual verificado.
-- `verification_status`: Estado de verificación de ingresos.
-- `dti` (Debt-to-Income): Relación entre deuda total e ingreso.
+Situamos la predicción después de recibir la solicitud y consultar el historial crediticio, pero antes de que Lending Club apruebe el préstamo, asigne su calificación de riesgo, fije la tasa de interés o desembolse el dinero. Solo consideraremos información disponible en ese instante.
+
+La [auditoría de las 151 variables](reports/analisis_variables.md) identifica 54 candidatas provisionales y 8 de uso condicional; esto no equivale a seleccionar todas para el modelo. Entre las candidatas están:
+
+- **Datos de la solicitud:** `emp_length`, `home_ownership`, `annual_inc` (ingreso declarado), `purpose`, `dti` y `application_type`.
+- **Historial crediticio consultado:** `fico_range_low`, `delinq_2yrs`, `inq_last_6mths`, `open_acc`, `pub_rec`, `revol_bal`, `revol_util`, `total_acc` y otros antecedentes de cuentas y moras. Algunas columnas adicionales requieren comprobar su cobertura por año antes de incorporarlas.
+
+El uso de `loan_amnt`, `term` y `verification_status` depende de confirmar si el valor registrado ya existía en el instante definido. `addr_state` requiere revisar su uso geográfico; `earliest_cr_line`, una fecha de referencia válida; y las variables del segundo solicitante solo aplican a préstamos conjuntos. Estas condiciones se detallan en la auditoría.
+
+Excluimos como predictores `int_rate`, `installment`, `grade`, `sub_grade` y los montos finalmente financiados porque dependen del proceso posterior de Lending Club. `issue_d` se reserva para la comprobación temporal de la sección 10, no para entrenar el modelo. Las nueve variables de la sección 11 son solo un subconjunto provisional para el primer baseline.
 
 ## 8. Riesgos de Leakage (Fuga de Datos)
 
@@ -145,7 +144,7 @@ Son variables sobre acuerdos para pagar un monto reducido de una deuda **ya cast
 
 ## 11. Modelo Baseline
 - **Algoritmo:** regresión logística (`LogisticRegression` de `scikit-learn`) como referencia simple para comparar modelos posteriores.
-- **Variables iniciales:** `annual_inc`, `dti`, `open_acc`, `pub_rec`, `revol_bal`, `total_acc`, `fico_range_low`, `delinq_2yrs` e `inq_last_6mths`. Son variables numéricas de la solicitud o del historial crediticio disponible en el instante de predicción definido para este proyecto. Excluimos `int_rate` e `installment` porque dependen de la evaluación de Lending Club; `loan_amnt` queda fuera hasta confirmar si el valor registrado corresponde al monto solicitado antes de esa evaluación.
+- **Selección provisional para el primer baseline:** `annual_inc`, `dti`, `open_acc`, `pub_rec`, `revol_bal`, `total_acc`, `fico_range_low`, `delinq_2yrs` e `inq_last_6mths`. Se eligieron por su disponibilidad en el instante de predicción, su cobertura casi completa y la sencillez de trabajar inicialmente con variables numéricas. El número de variables no es un requisito ni el resultado de una selección estadística; no afirmamos que sean las mejores. La selección podrá revisarse usando validación. `int_rate` e `installment` quedan excluidas y `loan_amnt` permanece pendiente de confirmar, como se explica en la sección 7.
 - **Preparación y entrenamiento:** imputaremos los valores faltantes con la mediana y estandarizaremos las variables dentro de un mismo pipeline. La mediana, la escala y los parámetros del modelo se ajustarán únicamente con el conjunto de entrenamiento definido en la sección 10.
 - **Evaluación:** usaremos validación para fijar el umbral de decisión y reportaremos en prueba ROC-AUC, PR-AUC, recall y precisión según la sección 9. El baseline que aparece actualmente en el notebook emplea otras variables y una partición distinta; sus resultados guardados son preliminares y deberán recalcularse antes de compararlos con esta propuesta.
 
