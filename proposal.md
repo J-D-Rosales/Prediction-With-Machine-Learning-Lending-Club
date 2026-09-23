@@ -5,7 +5,7 @@ Modelo de Machine Learning para la Predicción de Incumplimiento de Pagos (Defau
 
 ## 2. Integrantes
 - Farid Jack Aquino Castro - 202410569
-- [Nombre Integrante 2]
+- Carlos Felix Lhi - 202120214
 - [Nombre Integrante 3]
 
 ## 3. Dataset Elegido
