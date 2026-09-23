@@ -37,20 +37,19 @@ Además, la exploración inicial permitió identificar valores faltantes, regist
 *(Nota: Se excluirán los préstamos que actualmente están en ejecución para evitar ambigüedad).*
 
 ## 6. Unidad de Predicción
-Un préstamo individual aprobado solicitado por un cliente.
+La unidad de predicción es una solicitud de préstamo, evaluada antes de la decisión de aprobación. El entrenamiento y la evaluación usan únicamente préstamos históricamente aprobados; sus resultados no se extrapolan automáticamente a las solicitudes rechazadas.
 
 ## 7. Variables Disponibles Antes de la Predicción
-Se seleccionarán únicamente variables conocidas en el momento en que se solicita o evalúa la solicitud crediticia:
-- `loan_amnt`: Monto del préstamo solicitado.
-- `term`: Plazo (36 o 60 meses).
-- `int_rate`: Tasa de interés asignada.
-- `installment`: Cuota mensual.
-- `grade` / `sub_grade`: Calificación de riesgo interna.
-- `emp_length`: Antigüedad laboral.
-- `home_ownership`: Tipo de vivienda (Propia, Alquilada, Hipotecada).
-- `annual_inc`: Ingreso anual verificado.
-- `verification_status`: Estado de verificación de ingresos.
-- `dti` (Debt-to-Income): Relación entre deuda total e ingreso.
+Situamos la predicción después de recibir la solicitud y consultar el historial crediticio, pero antes de que Lending Club apruebe el préstamo, asigne su calificación de riesgo, fije la tasa de interés o desembolse el dinero. Solo consideraremos información disponible en ese instante.
+
+La [auditoría de las 151 variables](reports/analisis_variables.md) identifica 54 candidatas provisionales y 8 de uso condicional; esto no equivale a seleccionar todas para el modelo. Entre las candidatas están:
+
+- **Datos de la solicitud:** `emp_length`, `home_ownership`, `annual_inc` (ingreso declarado), `purpose`, `dti` y `application_type`.
+- **Historial crediticio consultado:** `fico_range_low`, `delinq_2yrs`, `inq_last_6mths`, `open_acc`, `pub_rec`, `revol_bal`, `revol_util`, `total_acc` y otros antecedentes de cuentas y moras. Algunas columnas adicionales requieren comprobar su cobertura por año antes de incorporarlas.
+
+El uso de `loan_amnt`, `term` y `verification_status` depende de confirmar si el valor registrado ya existía en el instante definido. `addr_state` requiere revisar su uso geográfico; `earliest_cr_line`, una fecha de referencia válida; y las variables del segundo solicitante solo aplican a préstamos conjuntos. Estas condiciones se detallan en la auditoría.
+
+Excluimos como predictores `int_rate`, `installment`, `grade`, `sub_grade` y los montos finalmente financiados porque dependen del proceso posterior de Lending Club. `issue_d` se reserva para la comprobación temporal de la sección 10, no para entrenar el modelo. Las nueve variables de la sección 11 son solo un subconjunto provisional para el primer baseline.
 
 ## 8. Riesgos de Leakage (Fuga de Datos)
 
@@ -133,21 +132,32 @@ Son variables sobre acuerdos para pagar un monto reducido de una deuda **ya cast
  
 
 ## 9. Métrica Principal y Secundaria
-- **Métrica Principal:** `ROC-AUC` (Evalúa la capacidad de ordenamiento y separación entre clientes buenos y malos).
-- **Métrica Secundaria:** `PR-AUC` (Precision-Recall AUC) y `Recall` para la clase minoritaria (`Charged Off`), garantizando capturar la mayor cantidad de defaults posibles dado el desbalance de clases[cite: 1].
+- **Métrica principal: ROC-AUC.** Mide qué tan bien el modelo ordena los préstamos según su riesgo de incumplimiento, considerando todos los umbrales de decisión. Permitirá comparar el baseline con los modelos posteriores sin depender de un umbral particular.
+- **Métrica secundaria: PR-AUC.** Resume la relación entre precisión y recall para la clase `Charged Off`. La reportaremos porque los incumplimientos representan aproximadamente el 20 % de los préstamos con estado final; como referencia, un clasificador sin capacidad de discriminación tendría una precisión cercana a esa proporción.
+- **Evaluación a un umbral de decisión:** reportaremos el recall de `Charged Off` junto con su precisión. El umbral se escogerá en una partición de validación y quedará fijo antes de evaluar el conjunto de prueba. Así podremos ver cuántos incumplimientos detecta el modelo y cuántos préstamos señalados como riesgosos realmente incumplen.
 
 ## 10. Plan de Validación
-- **Estrategia:** Partición de datos en Entrenamiento (80%) y Prueba (20%) con estratificación (`Stratified Train-Test Split`) para mantener la proporción de defaults.
-- Alternativamente, si la columna de fecha (`issue_d`) lo permite, se evaluará un split temporal (evaluar en el período más reciente)[cite: 1].
+- **Población evaluada:** usaremos los préstamos con resultado definitivo (`Fully Paid` o `Charged Off`). Los préstamos `Current` quedan fuera porque aún no se conoce su resultado; por ello, las métricas no deben interpretarse como una estimación sin sesgo del desempeño sobre todas las solicitudes nuevas.
+- **Partición principal:** separaremos el 20 % como conjunto de prueba y dividiremos el 80 % restante en entrenamiento y validación, con proporciones finales de 64 % / 16 % / 20 %. Ambas divisiones serán estratificadas por `loan_status` y reproducibles mediante una semilla fija.
+- **Uso de cada conjunto:** ajustaremos la imputación, las transformaciones y el modelo únicamente con entrenamiento. Usaremos validación para comparar configuraciones y fijar el umbral de decisión; aplicaremos todo sin reajustarlo al conjunto de prueba, que se evaluará una sola vez con las métricas de la sección 9.
+- **Comprobación temporal:** analizaremos por año de `issue_d` qué proporción de préstamos tiene un resultado definitivo antes de definir un corte cronológico. Si hay cohortes suficientemente maduras, entrenaremos con préstamos anteriores y evaluaremos en préstamos posteriores como prueba adicional de estabilidad. No usaremos automáticamente 2018 como período de prueba: solo el 11,37 % de sus préstamos tiene resultado definitivo, por lo que ese subconjunto estaría fuertemente seleccionado. `issue_d` servirá para esta comprobación, no como predictor.
 
 ## 11. Modelo Baseline
-- **Algoritmo:** Regresión Logística (`LogisticRegression` de `scikit-learn`)[cite: 1].
-- **Propósito:** Ofrecer un benchmark inicial simple sobre variables numéricas imputadas para comparar la mejora de modelos más complejos en fases posteriores[cite: 1].
+- **Algoritmo:** regresión logística (`LogisticRegression` de `scikit-learn`) como referencia simple para comparar modelos posteriores.
+- **Selección provisional para el primer baseline:** `annual_inc`, `dti`, `open_acc`, `pub_rec`, `revol_bal`, `total_acc`, `fico_range_low`, `delinq_2yrs` e `inq_last_6mths`. Se eligieron por su disponibilidad en el instante de predicción, su cobertura casi completa y la sencillez de trabajar inicialmente con variables numéricas. El número de variables no es un requisito ni el resultado de una selección estadística; no afirmamos que sean las mejores. La selección podrá revisarse usando validación. `int_rate` e `installment` quedan excluidas y `loan_amnt` permanece pendiente de confirmar, como se explica en la sección 7.
+- **Preparación y entrenamiento:** imputaremos los valores faltantes con la mediana y estandarizaremos las variables dentro de un mismo pipeline. La mediana, la escala y los parámetros del modelo se ajustarán únicamente con el conjunto de entrenamiento definido en la sección 10.
+- **Evaluación:** usaremos validación para fijar el umbral de decisión y reportaremos en prueba ROC-AUC, PR-AUC, recall y precisión según la sección 9. El baseline que aparece actualmente en el notebook emplea otras variables y una partición distinta; sus resultados guardados son preliminares y deberán recalcularse antes de compararlos con esta propuesta.
 
 ## 12. Riesgos Técnicos
-- **Volumen de Datos:** Archivos pesados que requieren gestión adecuada de memoria RAM.
-- **Desbalance de Clases:** La mayoría de préstamos son pagados, por lo que los defaults son la clase minoritaria.
-- **Valores Faltantes:** Alto porcentaje de nulos en variables de historial crediticio secundario[cite: 1].
+
+| Riesgo | Consecuencia | Medida prevista |
+|---|---|---|
+| Fuga de datos | Variables generadas por la aprobación o durante la vida del préstamo podrían producir métricas artificialmente altas. | Usar solo variables disponibles en el instante definido en la sección 7 y contrastar cada incorporación con la auditoría de variables y los riesgos de la sección 8. |
+| Sesgo de selección y resultados aún no observados | El dataset contiene préstamos aprobados y el modelado excluye los que siguen `Current`; las métricas pueden no representar solicitudes rechazadas ni préstamos recientes. | Delimitar la población evaluada, informar la proporción de resultados definitivos por cohorte y no interpretar una partición temporal reciente como prueba imparcial si aún no ha madurado. |
+| Nulos y cobertura cambiante por año | Algunas variables no existían en los años antiguos; en otras, un valor vacío puede significar que no ocurrió un evento crediticio, no que su valor sea cero. | Revisar cobertura por `issue_d` y el significado de los nulos antes de añadir cada variable. Ajustar la imputación únicamente con entrenamiento y no reemplazar automáticamente todos los vacíos por cero. |
+| Valores extremos y escalas diferentes | Ingresos, saldos y ratios extremos pueden afectar el ajuste de la regresión logística. | Inspeccionar sus distribuciones y comparar tratamientos robustos cuando sea necesario; calcular cualquier transformación solo con entrenamiento y aplicarla sin cambios a validación y prueba. |
+| Desbalance de clases | Cerca del 20 % de los préstamos con resultado definitivo son `Charged Off`; una exactitud alta podría ocultar una detección deficiente de incumplimientos. | Evaluar ROC-AUC y PR-AUC, y reportar recall junto con precisión usando un umbral elegido en validación, como establece la sección 9. |
+| Volumen y reproducibilidad | Los 2,260,701 registros y 151 columnas elevan el uso de memoria; los datos externos, rutas y dependencias pueden impedir que otro integrante reproduzca el notebook. | Trabajar con las columnas necesarias y formatos de lectura eficientes; documentar la obtención de datos y el entorno, fijar semillas y comprobar la ejecución completa del notebook desde una sesión limpia. |
 
 ## 13. Plan de Trabajo (Semanas Restantes)
 - **Semana 1-2:** Finalización de EDA, tratamiento de outliers e imputación de faltantes[cite: 1].
