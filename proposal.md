@@ -4,9 +4,11 @@
 Modelo de Machine Learning para la Predicción de Incumplimiento de Pagos (Default) en Préstamos de Lending Club.
 
 ## 2. Integrantes
-- Farid Jack Aquino Castro - 202410569
-- [Nombre Integrante 2]
-- [Nombre Integrante 3]
+
+- Aquino Castro, Farid Jack — 202410569
+- Huaman Rosales, Jose Daniel — 202410576
+- Felix Lhi, Carlos Daniel — 202120214
+- Maquera Quispe, Luis Fernando — 202410621
 
 ## 3. Dataset Elegido
 

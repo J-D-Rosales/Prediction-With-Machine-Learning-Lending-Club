@@ -2,6 +2,13 @@
 
 Este repositorio contiene la propuesta, la exploración inicial y un baseline de regresión logística para predecir `Charged Off` en préstamos de Lending Club.
 
+## Integrantes
+
+- Aquino Castro, Farid Jack — 202410569
+- Huaman Rosales, Jose Daniel — 202410576
+- Felix Lhi, Carlos Daniel — 202120214
+- Maquera Quispe, Luis Fernando — 202410621
+
 ## Estructura del Repositorio
 
 ```text
