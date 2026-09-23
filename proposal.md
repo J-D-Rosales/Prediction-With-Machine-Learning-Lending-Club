@@ -160,7 +160,7 @@ Son variables sobre acuerdos para pagar un monto reducido de una deuda **ya cast
 | Volumen y reproducibilidad | Los 2,260,701 registros y 151 columnas elevan el uso de memoria; los datos externos, rutas y dependencias pueden impedir que otro integrante reproduzca el notebook. | Trabajar con las columnas necesarias y formatos de lectura eficientes; documentar la obtención de datos y el entorno, fijar semillas y comprobar la ejecución completa del notebook desde una sesión limpia. |
 
 ## 13. Plan de Trabajo (Semanas Restantes)
-- **Semana 1-2:** Finalización de EDA, tratamiento de outliers e imputación de faltantes[cite: 1].
-- **Semana 3-4:** Ingeniería de características (Feature Engineering) y selección de variables sin leakage[cite: 1].
-- **Semana 5-6:** Entrenamiento de modelos avanzados (Random Forest, XGBoost/LightGBM) y optimización de hiperparámetros[cite: 1].
-- **Semana 7-8:** Análisis de errores, interpretabilidad (SHAP/LIME) y redacción del informe final[cite: 1].
+- **Semana 8-9:** Finalización de EDA, tratamiento de outliers e imputación de faltantes[cite: 1].
+- **Semana 9-12:** Ingeniería de características (Feature Engineering) y selección de variables sin leakage[cite: 1].
+- **Semana 11-14:** Entrenamiento de modelos avanzados (Random Forest, XGBoost/LightGBM) y optimización de hiperparámetros[cite: 1].
+- **Semana 14-17:** Análisis de errores, interpretabilidad (SHAP/LIME) y redacción del informe final[cite: 1].
