@@ -133,16 +133,21 @@ Son variables sobre acuerdos para pagar un monto reducido de una deuda **ya cast
  
 
 ## 9. Métrica Principal y Secundaria
-- **Métrica Principal:** `ROC-AUC` (Evalúa la capacidad de ordenamiento y separación entre clientes buenos y malos).
-- **Métrica Secundaria:** `PR-AUC` (Precision-Recall AUC) y `Recall` para la clase minoritaria (`Charged Off`), garantizando capturar la mayor cantidad de defaults posibles dado el desbalance de clases[cite: 1].
+- **Métrica principal: ROC-AUC.** Mide qué tan bien el modelo ordena los préstamos según su riesgo de incumplimiento, considerando todos los umbrales de decisión. Permitirá comparar el baseline con los modelos posteriores sin depender de un umbral particular.
+- **Métrica secundaria: PR-AUC.** Resume la relación entre precisión y recall para la clase `Charged Off`. La reportaremos porque los incumplimientos representan aproximadamente el 20 % de los préstamos con estado final; como referencia, un clasificador sin capacidad de discriminación tendría una precisión cercana a esa proporción.
+- **Evaluación a un umbral de decisión:** reportaremos el recall de `Charged Off` junto con su precisión. El umbral se escogerá en una partición de validación y quedará fijo antes de evaluar el conjunto de prueba. Así podremos ver cuántos incumplimientos detecta el modelo y cuántos préstamos señalados como riesgosos realmente incumplen.
 
 ## 10. Plan de Validación
-- **Estrategia:** Partición de datos en Entrenamiento (80%) y Prueba (20%) con estratificación (`Stratified Train-Test Split`) para mantener la proporción de defaults.
-- Alternativamente, si la columna de fecha (`issue_d`) lo permite, se evaluará un split temporal (evaluar en el período más reciente)[cite: 1].
+- **Población evaluada:** usaremos los préstamos con resultado definitivo (`Fully Paid` o `Charged Off`). Los préstamos `Current` quedan fuera porque aún no se conoce su resultado; por ello, las métricas no deben interpretarse como una estimación sin sesgo del desempeño sobre todas las solicitudes nuevas.
+- **Partición principal:** separaremos el 20 % como conjunto de prueba y dividiremos el 80 % restante en entrenamiento y validación, con proporciones finales de 64 % / 16 % / 20 %. Ambas divisiones serán estratificadas por `loan_status` y reproducibles mediante una semilla fija.
+- **Uso de cada conjunto:** ajustaremos la imputación, las transformaciones y el modelo únicamente con entrenamiento. Usaremos validación para comparar configuraciones y fijar el umbral de decisión; aplicaremos todo sin reajustarlo al conjunto de prueba, que se evaluará una sola vez con las métricas de la sección 9.
+- **Comprobación temporal:** analizaremos por año de `issue_d` qué proporción de préstamos tiene un resultado definitivo antes de definir un corte cronológico. Si hay cohortes suficientemente maduras, entrenaremos con préstamos anteriores y evaluaremos en préstamos posteriores como prueba adicional de estabilidad. No usaremos automáticamente 2018 como período de prueba: solo el 11,37 % de sus préstamos tiene resultado definitivo, por lo que ese subconjunto estaría fuertemente seleccionado. `issue_d` servirá para esta comprobación, no como predictor.
 
 ## 11. Modelo Baseline
-- **Algoritmo:** Regresión Logística (`LogisticRegression` de `scikit-learn`)[cite: 1].
-- **Propósito:** Ofrecer un benchmark inicial simple sobre variables numéricas imputadas para comparar la mejora de modelos más complejos en fases posteriores[cite: 1].
+- **Algoritmo:** regresión logística (`LogisticRegression` de `scikit-learn`) como referencia simple para comparar modelos posteriores.
+- **Variables iniciales:** `annual_inc`, `dti`, `open_acc`, `pub_rec`, `revol_bal`, `total_acc`, `fico_range_low`, `delinq_2yrs` e `inq_last_6mths`. Son variables numéricas de la solicitud o del historial crediticio disponible en el instante de predicción definido para este proyecto. Excluimos `int_rate` e `installment` porque dependen de la evaluación de Lending Club; `loan_amnt` queda fuera hasta confirmar si el valor registrado corresponde al monto solicitado antes de esa evaluación.
+- **Preparación y entrenamiento:** imputaremos los valores faltantes con la mediana y estandarizaremos las variables dentro de un mismo pipeline. La mediana, la escala y los parámetros del modelo se ajustarán únicamente con el conjunto de entrenamiento definido en la sección 10.
+- **Evaluación:** usaremos validación para fijar el umbral de decisión y reportaremos en prueba ROC-AUC, PR-AUC, recall y precisión según la sección 9. El baseline que aparece actualmente en el notebook emplea otras variables y una partición distinta; sus resultados guardados son preliminares y deberán recalcularse antes de compararlos con esta propuesta.
 
 ## 12. Riesgos Técnicos
 - **Volumen de Datos:** Archivos pesados que requieren gestión adecuada de memoria RAM.
