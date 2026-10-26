@@ -86,6 +86,7 @@ En nuestro base de datos, a carencia de un diccionario de datos, realizamos un a
 | `collection_recovery_fee` | Comisión cobrada por la gestión de cobranza sobre lo recuperado. | Definicional | Solo existe si hubo recuperaciones, es decir, si hubo castigo. |
 | `last_pymnt_d` | Fecha del último pago recibido. | Temporal | `last_pymnt_d − issue_d` da la duración real del préstamo. Los Charged Off duran mucho menos que su plazo (`term`). |
 | `last_pymnt_amnt` | Monto del último pago recibido. | Temporal / Definicional | En un Fully Paid suele ser grande (liquidación del saldo); en un Charged Off es una cuota normal o pequeña. |
+| `next_pymnt_d` | Fecha del proximo pago | Temporal | Porque si está ausente en una fila del dataset significa que el préstamo se cerro
  
 ### 8.3 Información crediticia actualizada
  
