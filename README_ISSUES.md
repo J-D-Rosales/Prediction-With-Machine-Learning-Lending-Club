@@ -186,7 +186,7 @@ Tareas:
 
 - Evaluar las opciones para cada bloque según su tipo de nulo.
 - Ajustar la imputación solo con entrenamiento.
-- Comparar las opciones en validación contra el baseline (ROC-AUC 0.6326 y PR-AUC 0.2853, o sus valores actualizados si cambia el Issue 2).
+- Comparar las opciones en validación contra el baseline (validación: ROC-AUC 0.6336 y PR-AUC 0.2855, con la base común del Issue 2).
 - Decidir y documentar cómo tratar las columnas disponibles solo desde 2016: recortar años o imputar más del 60 % de los datos.
 
 **Entregable:** `notebooks/05_nulos.ipynb` y un pipeline de imputación.

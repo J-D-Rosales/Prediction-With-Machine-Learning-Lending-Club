@@ -18,13 +18,13 @@ Modelo de Machine Learning para la Predicción de Incumplimiento de Pagos (Defau
 
 El dataset fue seleccionado debido a su tamaño y complejidad, adecuados para abordar un problema real de riesgo crediticio.
 
-En la exploración inicial se identificaron 2,260,701 registros y 151 variables en el conjunto de préstamos aceptados. Para el problema predictivo se consideraron únicamente los préstamos con estado final `Fully Paid` o `Charged Off`, obteniéndose 1,345,310 observaciones.
+En la exploración inicial se identificaron 2,260,701 registros y 151 variables en el conjunto de préstamos aceptados. Para el problema predictivo se consideraron únicamente los préstamos con estado final `Fully Paid` o `Charged Off`, incluidos los otorgados con la política de crédito anterior ("Does not meet the credit policy"), obteniéndose 1,348,059 observaciones.
 
 La variable objetivo se definió como:
 - `0`: Fully Paid
 - `1`: Charged Off
 
-La distribución obtenida fue aproximadamente 80.04% de préstamos `Fully Paid` y 19.96% de préstamos `Charged Off`, evidenciando un desbalance de clases que deberá ser considerado durante el modelado y evaluación.
+La distribución obtenida fue aproximadamente 80.02% de préstamos `Fully Paid` y 19.98% de préstamos `Charged Off`, evidenciando un desbalance de clases que deberá ser considerado durante el modelado y evaluación.
 
 Además, la exploración inicial permitió identificar valores faltantes, registros atípicos y variables que podrían generar data leakage si contienen información posterior al otorgamiento del préstamo. Estas características hacen que el dataset represente un problema de datos reales y permitan evaluar diferentes estrategias de Machine Learning.
 
@@ -34,7 +34,7 @@ Además, la exploración inicial permitió identificar valores faltantes, regist
 ## 5. Variable Objetivo
 - **Variable:** `loan_status`
 - **Tipo:** Categórica binarizada.
-  - `1`: Incumplimiento (`Charged Off` / `Default`).
+  - `1`: Incumplimiento (`Charged Off`).
   - `0`: Pagado completamente (`Fully Paid`).
 *(Nota: Se excluirán los préstamos que actualmente están en ejecución para evitar ambigüedad).*
 
@@ -140,7 +140,7 @@ Son variables sobre acuerdos para pagar un monto reducido de una deuda **ya cast
 - **Evaluación a un umbral de decisión:** reportaremos el recall de `Charged Off` junto con su precisión. El umbral se escogerá en una partición de validación y quedará fijo antes de evaluar el conjunto de prueba. Así podremos ver cuántos incumplimientos detecta el modelo y cuántos préstamos señalados como riesgosos realmente incumplen.
 
 ## 10. Plan de Validación
-- **Población evaluada:** usaremos los préstamos con resultado definitivo (`Fully Paid` o `Charged Off`). Los préstamos `Current` quedan fuera porque aún no se conoce su resultado; por ello, las métricas no deben interpretarse como una estimación sin sesgo del desempeño sobre todas las solicitudes nuevas.
+- **Población evaluada:** usaremos los préstamos con resultado definitivo (`Fully Paid` o `Charged Off`, con o sin el prefijo "Does not meet the credit policy"). Los préstamos `Current` y `Default` quedan fuera porque aún no se conoce su resultado; por ello, las métricas no deben interpretarse como una estimación sin sesgo del desempeño sobre todas las solicitudes nuevas.
 - **Partición principal:** separaremos el 20 % como conjunto de prueba y dividiremos el 80 % restante en entrenamiento y validación, con proporciones finales de 64 % / 16 % / 20 %. Ambas divisiones serán estratificadas por `loan_status` y reproducibles mediante una semilla fija.
 - **Uso de cada conjunto:** ajustaremos la imputación, las transformaciones y el modelo únicamente con entrenamiento. Usaremos validación para comparar configuraciones y fijar el umbral de decisión; aplicaremos todo sin reajustarlo al conjunto de prueba, que se evaluará una sola vez con las métricas de la sección 9.
 - **Comprobación temporal:** analizaremos por año de `issue_d` qué proporción de préstamos tiene un resultado definitivo antes de definir un corte cronológico. Si hay cohortes suficientemente maduras, entrenaremos con préstamos anteriores y evaluaremos en préstamos posteriores como prueba adicional de estabilidad. No usaremos automáticamente 2018 como período de prueba: solo el 11,37 % de sus préstamos tiene resultado definitivo, por lo que ese subconjunto estaría fuertemente seleccionado. `issue_d` servirá para esta comprobación, no como predictor.
@@ -149,7 +149,7 @@ Son variables sobre acuerdos para pagar un monto reducido de una deuda **ya cast
 - **Algoritmo:** regresión logística (`LogisticRegression` de `scikit-learn`) como referencia simple para comparar modelos posteriores.
 - **Selección provisional para el primer baseline:** `annual_inc`, `dti`, `open_acc`, `pub_rec`, `revol_bal`, `total_acc`, `fico_range_low`, `delinq_2yrs` e `inq_last_6mths`. Se eligieron por su disponibilidad en el instante de predicción, su cobertura casi completa y la sencillez de trabajar inicialmente con variables numéricas. El número de variables no es un requisito ni el resultado de una selección estadística; no afirmamos que sean las mejores. La selección podrá revisarse usando validación. `int_rate` e `installment` quedan excluidas y `loan_amnt` permanece pendiente de confirmar, como se explica en la sección 7.
 - **Preparación y entrenamiento implementados:** el notebook imputa los valores faltantes con la mediana y estandariza las variables dentro de un mismo pipeline. La mediana, la escala y los parámetros del modelo se ajustan únicamente con el conjunto de entrenamiento definido en la sección 10.
-- **Evaluación realizada:** el [notebook del baseline vigente](notebooks/02_baseline_sin_leakage.ipynb) eligió en validación el umbral 0.1923 al maximizar F1. En prueba obtuvo ROC-AUC 0.6325, PR-AUC medida como *average precision* 0.2860, recall 0.6822 y precisión 0.2556. Este umbral es una referencia técnica, no una regla de aprobación. El baseline del [notebook de exploración inicial](notebooks/01_exploración_inicial.ipynb) se conserva como experimento histórico; sus métricas no son directamente comparables porque usó otras variables y otra partición.
+- **Evaluación realizada:** el [notebook del baseline vigente](notebooks/02_baseline_sin_leakage.ipynb) eligió en validación el umbral 0.1831 al maximizar F1. En prueba obtuvo ROC-AUC 0.6331, PR-AUC medida como *average precision* 0.2848, recall 0.7324 y precisión 0.2498. Este umbral es una referencia técnica, no una regla de aprobación. El baseline del [notebook de exploración inicial](notebooks/01_exploración_inicial.ipynb) se conserva como experimento histórico; sus métricas no son directamente comparables porque usó otras variables y otra partición.
 
 ## 12. Riesgos Técnicos
 
