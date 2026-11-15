@@ -56,6 +56,11 @@ Si un issue depende de otro que no ha cerrado, se puede avanzar con una versión
 - Imputación, escalado, transformaciones y PCA se ajustan solo con entrenamiento.
 - Las opciones se comparan en validación. El conjunto de prueba no se usa en estos issues.
 
+### Cómo continuar el trabajo
+
+1. Ejecutar primero `notebooks/issue2.ipynb` (Issue 2). Carga el dataset con `src/data.py` y deja listos `X_train`, `y_train`, `X_val`, `y_val`, `X_test` y `y_test`. Los demás notebooks pueden empezar con `%run issue2.ipynb`.
+2. El Issue 5 parte de lo encontrado en el Issue 4: la tabla de la sección "Tipos de nulos (Issue 4)" de `reports/decisiones_columnas.md` (o la tabla `tabla` de `notebooks/issue4.ipynb`) indica, para cada columna con nulos, si se imputa, si se imputa con indicador o si se evalúa.
+
 ### Decisión tomada: LDA queda fuera
 
 No se aplicará análisis de discriminación lineal (LDA). Con un target binario produce un solo componente, por lo que no sirve para reducir a varias dimensiones. El informe debe mencionar esta decisión, ya que el profesor lo había recomendado.
@@ -164,7 +169,7 @@ Tareas:
 | El evento no ocurrió (por confirmar) | `mths_since_last_delinq` | Posiblemente nunca hubo morosidad |
 | Faltante común | `emp_length` | Se relaciona con el target (26.9 % frente a 19.6 %) |
 
-**Entregable:** `notebooks/04_mcar_target.ipynb` y una tabla por bloque de nulos en `reports/decisiones_columnas.md`.
+**Entregable:** `notebooks/issue4.ipynb` y una tabla por bloque de nulos en `reports/decisiones_columnas.md`.
 
 **Se cierra cuando:** cada bloque con nulos tiene un tipo asignado y su relación con el target medida por cohorte.
 
@@ -181,6 +186,8 @@ Tareas:
 **Descripción:**
 
 Con los resultados de los issues 3 y 4, decidir qué hacer con cada bloque de nulos: eliminar la columna, imputar, añadir un indicador de nulo o limitar las cohortes.
+
+**Punto de partida:** ejecutar `notebooks/issue2.ipynb` (`%run`) y usar la decisión por columna del Issue 4 (sección "Tipos de nulos (Issue 4)" de `reports/decisiones_columnas.md`): "Imputar", "Imputar + indicador" o "Evaluar" (más de 40 % de nulos).
 
 Tareas:
 
