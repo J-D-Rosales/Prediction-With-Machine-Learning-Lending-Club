@@ -52,6 +52,7 @@ Si un issue depende de otro que no ha cerrado, se puede avanzar con una versión
 ### Reglas para todos
 
 - Cada persona trabaja en su propio notebook para evitar conflictos de merge. El código compartido va en `src/`.
+- Los notebooks de cada issue se nombran `issue<número>.ipynb` (por ejemplo, `notebooks/issue3.ipynb`) y empiezan con `%run issue2.ipynb`.
 - Cada issue registra sus resultados en `reports/decisiones_columnas.md`, con la columna, la decisión y el motivo.
 - Imputación, escalado, transformaciones y PCA se ajustan solo con entrenamiento.
 - Las opciones se comparan en validación. El conjunto de prueba no se usa en estos issues.
@@ -98,7 +99,7 @@ Tareas adicionales:
 - Si cambia la población o la partición, volver a ejecutar el baseline para que los demás issues comparen contra valores actualizados.
 - Crear `reports/decisiones_columnas.md`.
 
-**Entregable:** `src/data.py` y `reports/decisiones_columnas.md`.
+**Entregable:** `src/data.py`, `reports/decisiones_columnas.md` y `notebooks/issue2.ipynb`, que carga el dataset con `src/data.py` y deja listos `X_train`, `y_train`, `X_val`, `y_val`, `X_test` y `y_test` para los issues siguientes.
 
 **Se cierra cuando:** cualquier integrante obtiene las mismas filas y la misma partición con una sola función.
 
@@ -133,7 +134,7 @@ Pares para empezar, con correlación de Pearson de 0.9 o más en una muestra exp
 | `tot_cur_bal` y `tot_hi_cred_lim` | 0.970 |
 | `total_bal_il` y `total_il_high_credit_limit` | 0.956 |
 
-**Entregable:** `notebooks/03_redundancia.ipynb` y la lista de columnas a eliminar en `reports/decisiones_columnas.md`.
+**Entregable:** `notebooks/issue3.ipynb` y la lista de columnas a eliminar en `reports/decisiones_columnas.md`.
 
 **Se cierra cuando:** cada grupo de columnas redundantes tiene una decisión justificada.
 
@@ -196,7 +197,7 @@ Tareas:
 - Comparar las opciones en validación contra el baseline (validación: ROC-AUC 0.6336 y PR-AUC 0.2855, con la base común del Issue 2).
 - Decidir y documentar cómo tratar las columnas disponibles solo desde 2016: recortar años o imputar más del 60 % de los datos.
 
-**Entregable:** `notebooks/05_nulos.ipynb` y un pipeline de imputación.
+**Entregable:** `notebooks/issue5.ipynb` y un pipeline de imputación.
 
 **Se cierra cuando:** cada columna con nulos tiene una decisión registrada y el pipeline funciona sin nulos en la salida.
 
@@ -221,7 +222,7 @@ Tareas:
 - Definir el escalado final.
 - Ajustar todas las transformaciones solo con entrenamiento y aplicarlas sin cambios a validación y prueba.
 
-**Entregable:** `notebooks/06_outliers.ipynb` y un pipeline de transformaciones.
+**Entregable:** `notebooks/issue6.ipynb` y un pipeline de transformaciones.
 
 **Se cierra cuando:** cada variable numérica tiene un tratamiento definido y el pipeline se puede aplicar a todas las particiones.
 
@@ -246,6 +247,6 @@ Tareas:
 - Reportar varianza explicada, cargas y número de componentes elegido.
 - Comparar en validación la regresión logística con y sin PCA, usando ROC-AUC y PR-AUC.
 
-**Entregable:** `notebooks/07_pca.ipynb` y una conclusión sobre si conviene usar PCA en el modelado.
+**Entregable:** `notebooks/issue7.ipynb` y una conclusión sobre si conviene usar PCA en el modelado.
 
 **Se cierra cuando:** la comparación está hecha y la conclusión está registrada, aunque sea que PCA no mejora al baseline.
