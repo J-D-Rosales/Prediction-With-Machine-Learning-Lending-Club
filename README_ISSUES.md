@@ -42,25 +42,37 @@ Preparar los datos de Lending Club para el modelado siguiendo el orden recomenda
 
 ### Orden de trabajo
 
-1. Issue 2
-2. Issues 3 y 4, en paralelo
-3. Issues 5 y 6, en paralelo
-4. Issue 7
+Secuencial, en el orden de la cadena de notebooks: Issue 2 → 3 → 4 → 5 → 6 → 7. Cada issue parte de lo que deja el anterior.
 
 Si un issue depende de otro que no ha cerrado, se puede avanzar con una versión provisional y repetirlo cuando el anterior termine.
 
 ### Reglas para todos
 
 - Cada persona trabaja en su propio notebook para evitar conflictos de merge. El código compartido va en `src/`.
-- Los notebooks de cada issue se nombran `issue<número>.ipynb` (por ejemplo, `notebooks/issue3.ipynb`) y empiezan con `%run issue2.ipynb`.
+- Los notebooks de cada issue se nombran `issue<número>.ipynb` (por ejemplo, `notebooks/issue3.ipynb`) y empiezan ejecutando el notebook del issue anterior (`%run issue<número - 1>.ipynb`); ver "Cómo continuar el trabajo".
 - Cada issue registra sus resultados en `reports/decisiones_columnas.md`, con la columna, la decisión y el motivo.
 - Imputación, escalado, transformaciones y PCA se ajustan solo con entrenamiento.
 - Las opciones se comparan en validación. El conjunto de prueba no se usa en estos issues.
 
 ### Cómo continuar el trabajo
 
-1. Ejecutar primero `notebooks/issue2.ipynb` (Issue 2). Carga el dataset con `src/data.py` y deja listos `X_train`, `y_train`, `X_val`, `y_val`, `X_test` y `y_test`. Los demás notebooks pueden empezar con `%run issue2.ipynb`.
-2. El Issue 5 parte de lo encontrado en el Issue 4: la tabla de la sección "Tipos de nulos (Issue 4)" de `reports/decisiones_columnas.md` (o la tabla `tabla` de `notebooks/issue4.ipynb`) indica, para cada columna con nulos, si se imputa, si se imputa con indicador o si se evalúa.
+Los notebooks forman una cadena: cada uno empieza ejecutando el anterior y deja `X_train`, `y_train`, `X_val`, `y_val`, `X_test` y `y_test` listos para el siguiente. Al ejecutar `notebooks/issue7.ipynb` se recorre toda la cadena y se obtiene el dataset final para los modelos.
+
+| Notebook | Empieza con | Qué deja al siguiente |
+|---|---|---|
+| `issue2.ipynb` | — | Datos de `src/data.py`, partición 64/16/20; sin columnas con más de 90 % de nulos, casi constantes, `emp_title`, `title` ni `zip_code`. |
+| `issue3.ipynb` | `%run issue2.ipynb` | Sin las columnas redundantes. |
+| `issue4.ipynb` | `%run issue3.ipynb` | La tabla `tabla` con la `decisión` por columna con nulos ("Imputar", "Imputar + indicador" o "Evaluar"). Los datos no cambian. |
+| `issue5.ipynb` | `%run issue4.ipynb` | Base, por desarrollar: columnas imputadas, con indicadores de nulo y sin las que se decida eliminar. |
+| `issue6.ipynb` | `%run issue5.ipynb` | Numéricas con winsorización, `log1p` y `StandardScaler`; categóricas sin cambios. |
+| `issue7.ipynb` | `%run issue6.ipynb` | Base, por desarrollar: análisis PCA y dataset final para los modelos. |
+
+Reglas de la cadena:
+
+- Cada notebook **solo** modifica `X_train`, `X_val` y `X_test` en su última sección ("Salida para el Issue N"). Las variables de trabajo intermedias usan otros nombres (por ejemplo, `X_val_num`) para no pisar las de la cadena.
+- Todo lo que se aprende (columnas, medianas, percentiles, escalas, PCA) se ajusta con `X_train` y se aplica sin cambios a `X_val` y `X_test`; las tres terminan con las mismas columnas.
+- `issue5.ipynb` e `issue7.ipynb` son bases: solo están encadenadas y dejan pasar los datos sin cambios hasta que se desarrollen.
+- Pendiente para el modelado: codificar las columnas categóricas (`term`, `home_ownership`, `purpose`, `emp_length`, `addr_state`, etc.), que ningún issue cubre todavía.
 
 ### Decisión tomada: LDA queda fuera
 
@@ -146,7 +158,7 @@ Pares para empezar, con correlación de Pearson de 0.9 o más en una muestra exp
 
 **Responsable:** Farid
 
-**Depende de:** Issue 2
+**Depende de:** Issue 3 (y, a través de la cadena, Issue 2)
 
 **Descripción:**
 
@@ -182,13 +194,13 @@ Tareas:
 
 **Responsable:** Carlos
 
-**Depende de:** Issues 3 y 4
+**Depende de:** Issue 4 (y, a través de la cadena, issues 2 y 3)
 
 **Descripción:**
 
 Con los resultados de los issues 3 y 4, decidir qué hacer con cada bloque de nulos: eliminar la columna, imputar, añadir un indicador de nulo o limitar las cohortes.
 
-**Punto de partida:** ejecutar `notebooks/issue2.ipynb` (`%run`) y usar la decisión por columna del Issue 4 (sección "Tipos de nulos (Issue 4)" de `reports/decisiones_columnas.md`): "Imputar", "Imputar + indicador" o "Evaluar" (más de 40 % de nulos).
+**Punto de partida:** empezar con `%run issue4.ipynb`, que ejecuta los issues 2, 3 y 4 y deja `X_train` sin columnas redundantes, y usar la decisión por columna del Issue 4 (sección "Tipos de nulos (Issue 4)" de `reports/decisiones_columnas.md`): "Imputar", "Imputar + indicador" o "Evaluar" (más de 40 % de nulos).
 
 Tareas:
 
@@ -209,7 +221,7 @@ Tareas:
 
 **Responsable:** Jose Daniel
 
-**Depende de:** Issue 3
+**Depende de:** Issue 5 (y, a través de la cadena, issues 2 al 4)
 
 **Descripción:**
 
@@ -234,7 +246,7 @@ Tareas:
 
 **Responsable:** Luis
 
-**Depende de:** Issues 5 y 6
+**Depende de:** Issue 6 (y, a través de la cadena, issues 2 al 5)
 
 **Descripción:**
 
@@ -247,6 +259,6 @@ Tareas:
 - Reportar varianza explicada, cargas y número de componentes elegido.
 - Comparar en validación la regresión logística con y sin PCA, usando ROC-AUC y PR-AUC.
 
-**Entregable:** `notebooks/issue7.ipynb` y una conclusión sobre si conviene usar PCA en el modelado.
+**Entregable:** `notebooks/issue7.ipynb`, una conclusión sobre si conviene usar PCA en el modelado y el dataset final (`X_train`, `X_val`, `X_test`) para los modelos.
 
 **Se cierra cuando:** la comparación está hecha y la conclusión está registrada, aunque sea que PCA no mejora al baseline.

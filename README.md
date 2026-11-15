@@ -21,8 +21,12 @@ Prediction-With-Machine-Learning-Lending-Club/
 ├── notebooks/
 │   ├── 01_exploración_inicial.ipynb    # EDA y baseline histórico
 │   ├── 02_baseline_sin_leakage.ipynb   # Baseline vigente
-│   ├── 03_redundancia.ipynb            # Issue 3: columnas redundantes
-│   └── 06_outliers.ipynb               # Issue 6: outliers y transformaciones
+│   ├── issue2.ipynb                    # Issue 2: carga la base común
+│   ├── issue3.ipynb                    # Issue 3: columnas redundantes
+│   ├── issue4.ipynb                    # Issue 4: nulos MCAR y decisión
+│   ├── issue5.ipynb                    # Issue 5: imputación (base)
+│   ├── issue6.ipynb                    # Issue 6: outliers y transformaciones
+│   └── issue7.ipynb                    # Issue 7: PCA (base)
 ├── src/
 │   ├── data.py                         # Base común: target y partición
 │   └── features.py                     # Eliminación de redundantes y preprocesamiento numérico

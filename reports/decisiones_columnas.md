@@ -49,7 +49,7 @@ Las demás columnas (100 predictoras candidatas) quedan para los issues 3 al 6. 
 
 ## Columnas redundantes (Issue 3)
 
-Análisis en [`notebooks/03_redundancia.ipynb`](../notebooks/03_redundancia.ipynb), implementado en `EliminadorRedundantes` de [`src/features.py`](../src/features.py). Todo se calculó con la partición de entrenamiento (862,757 préstamos). Las correlaciones usan una submuestra fija de 200,000 préstamos (`SEED = 42`).
+Análisis en [`notebooks/issue3.ipynb`](../notebooks/issue3.ipynb), implementado en `EliminadorRedundantes` de [`src/features.py`](../src/features.py). Todo se calculó con la partición de entrenamiento (862,757 préstamos). Las correlaciones usan una submuestra fija de 200,000 préstamos (`SEED = 42`).
 
 Se eliminan 14 de las 100 columnas candidatas; quedan 86 (73 numéricas). Umbrales acordados:
 
@@ -88,15 +88,16 @@ En validación, eliminar las 11 columnas numéricas redundantes no cambia el mod
 
 ## Tipos de nulos (Issue 4)
 
-Análisis en [`notebooks/issue4.ipynb`](../notebooks/issue4.ipynb), que continúa `issue2.ipynb` (solo entrenamiento). Un nulo se considera **MCAR** si la tasa de `Charged Off` con y sin nulo difiere menos de 2 puntos porcentuales; con menos de 1,000 nulos no se juzga. La decisión depende del porcentaje de nulos: hasta 40 % se imputa (con indicador si no es MCAR); más de 40 % se evalúa en el Issue 5.
+Análisis en [`notebooks/issue4.ipynb`](../notebooks/issue4.ipynb), que continúa `issue3.ipynb` (y este a `issue2.ipynb`), así que ya no incluye las columnas redundantes del Issue 3. Solo usa entrenamiento. Un nulo se considera **MCAR** si la tasa de `Charged Off` con y sin nulo difiere menos de 2 puntos porcentuales; con menos de 1,000 nulos no se juzga. La decisión depende del porcentaje de nulos: hasta 40 % se imputa (con indicador si no es MCAR); más de 40 % se evalúa en el Issue 5.
 
 | Decisión | MCAR | Columnas |
 |---|---|---|
-| Evaluar (> 40 % de nulos) | No | `mths_since_last_record`, `mths_since_last_major_derog`, `il_util`, `mths_since_rcnt_il`, `all_util`, `inq_last_12m`, `open_acc_6m`, `total_cu_tl`, `open_rv_24m`, `max_bal_bc`, `open_il_12m`, `open_il_24m`, `inq_fi`, `open_rv_12m`, `total_bal_il`, `open_act_il` |
+| Evaluar (> 40 % de nulos) | No | `mths_since_last_record`, `mths_since_last_major_derog`, `il_util`, `mths_since_rcnt_il`, `all_util`, `inq_last_12m`, `open_acc_6m`, `total_cu_tl`, `open_rv_24m`, `max_bal_bc`, `open_il_12m`, `open_il_24m`, `inq_fi`, `open_rv_12m`, `open_act_il` |
 | Evaluar (> 40 % de nulos) | Sí | `mths_since_recent_bc_dlq`, `mths_since_recent_revol_delinq`, `mths_since_last_delinq` |
-| Imputar + indicador | No | `mths_since_recent_inq`, `mo_sin_old_il_acct`, `emp_length`, `pct_tl_nvr_dlq`, `avg_cur_bal`, `mo_sin_old_rev_tl_op`, `num_rev_accts`, `mo_sin_rcnt_rev_tl_op`, `total_il_high_credit_limit`, `tot_cur_bal`, `total_rev_hi_lim`, `num_il_tl`, `num_actv_rev_tl`, `tot_coll_amt`, `num_rev_tl_bal_gt_0`, `tot_hi_cred_lim`, `num_tl_op_past_12m`, `num_op_rev_tl`, `num_tl_90g_dpd_24m`, `num_tl_30dpd`, `mo_sin_rcnt_tl`, `num_accts_ever_120_pd`, `num_actv_bc_tl`, `num_bc_tl`, `bc_util`, `percent_bc_gt_75`, `bc_open_to_buy`, `mths_since_recent_bc`, `num_sats`, `num_bc_sats`, `total_bc_limit`, `acc_open_past_24mths`, `total_bal_ex_mort`, `mort_acc` |
-| Imputar | Sí | `num_tl_120dpd_2m` |
+| Imputar + indicador | No | `mths_since_recent_inq`, `mo_sin_old_il_acct`, `emp_length`, `pct_tl_nvr_dlq`, `avg_cur_bal`, `mo_sin_old_rev_tl_op`, `num_rev_accts`, `mo_sin_rcnt_rev_tl_op`, `total_il_high_credit_limit`, `total_rev_hi_lim`, `num_il_tl`, `num_actv_rev_tl`, `tot_coll_amt`, `tot_hi_cred_lim`, `num_tl_op_past_12m`, `num_op_rev_tl`, `num_tl_90g_dpd_24m`, `mo_sin_rcnt_tl`, `num_accts_ever_120_pd`, `num_actv_bc_tl`, `num_bc_tl`, `bc_util`, `percent_bc_gt_75`, `bc_open_to_buy`, `mths_since_recent_bc`, `num_bc_sats`, `total_bc_limit`, `acc_open_past_24mths`, `total_bal_ex_mort`, `mort_acc` |
 | Imputar | Pocos nulos | `pub_rec_bankruptcies`, `revol_util`, `dti`, `collections_12_mths_ex_med`, `tax_liens`, `inq_last_6mths`, `total_acc`, `pub_rec`, `delinq_2yrs`, `open_acc`, `earliest_cr_line`, `annual_inc` |
+
+Son 60 columnas: 18 se evalúan, 30 se imputan con indicador y 12 se imputan. `total_bal_il`, `tot_cur_bal`, `num_rev_tl_bal_gt_0`, `num_sats`, `num_tl_30dpd` y `num_tl_120dpd_2m` no aparecen porque el Issue 3 ya las eliminó.
 
 Advertencia: muchas de estas columnas empezaron a registrarse en 2012 o a finales de 2015, así que su nulo también indica un préstamo antiguo y parte de la diferencia en `Charged Off` puede deberse al año.
 
@@ -107,7 +108,7 @@ Advertencia: muchas de estas columnas empezaron a registrarse en 2012 o a finale
 
 ## Outliers y transformaciones (Issue 6)
 
-Análisis en [`notebooks/06_outliers.ipynb`](../notebooks/06_outliers.ipynb), implementado en `Winsorizador`, `TransformadorLog1p` y `PreprocesadorNumerico` de [`src/features.py`](../src/features.py). Se aplica a las 73 columnas numéricas que quedan tras el Issue 3.
+Análisis en [`notebooks/issue6.ipynb`](../notebooks/issue6.ipynb), implementado en `Winsorizador`, `TransformadorLog1p` y `PreprocesadorNumerico` de [`src/features.py`](../src/features.py). Se aplica a las 73 columnas numéricas que quedan tras el Issue 3.
 
 Los percentiles, la elección de columnas, las medianas y las escalas se aprenden solo con entrenamiento. Validación y prueba los reciben sin reajustar.
 
