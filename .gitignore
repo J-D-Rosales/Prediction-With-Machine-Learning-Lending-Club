@@ -63,3 +63,8 @@ MANIFEST
 *.swp
 *.swo
 .DS_Store
+
+# Herramientas locales de IA y editores
+.claude/
+.mcp.json
+CLAUDE.md

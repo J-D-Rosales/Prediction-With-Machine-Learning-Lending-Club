@@ -20,11 +20,16 @@ Prediction-With-Machine-Learning-Lending-Club/
 │   └── Readme.md
 ├── notebooks/
 │   ├── 01_exploración_inicial.ipynb    # EDA y baseline histórico
-│   └── 02_baseline_sin_leakage.ipynb   # Baseline vigente
+│   ├── 02_baseline_sin_leakage.ipynb   # Baseline vigente
+│   ├── 03_redundancia.ipynb            # Issue 3: columnas redundantes
+│   └── 06_outliers.ipynb               # Issue 6: outliers y transformaciones
 ├── src/
-│   └── data.py
+│   ├── data.py                         # Base común: target y partición
+│   └── features.py                     # Eliminación de redundantes y preprocesamiento numérico
 └── reports/
-    └── analisis_variables.md
+    ├── analisis_variables.md
+    ├── decisiones_columnas.md
+    └── figures/
 ```
 
 ## Instalación
