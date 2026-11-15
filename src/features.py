@@ -49,7 +49,7 @@ UMBRAL_NULOS = 1.0          # solo se eliminan columnas 100 % vacías
 UMBRAL_DOMINANCIA = 0.99    # valor más frecuente (entre los observados) >= 99 %
 UMBRAL_CORRELACION = 0.90   # |Pearson| o |Spearman| >= 0.90
 
-# Redundancias entre categóricas decididas en notebooks/03_redundancia.ipynb.
+# Redundancias entre categóricas decididas en notebooks/issue3.ipynb.
 # La correlación numérica no las detecta, así que se pasan explícitamente.
 REDUNDANTES_CATEGORICAS = {
     'title': 'Texto libre que repite `purpose` (V de Cramér alta con `purpose`); '
