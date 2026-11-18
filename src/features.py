@@ -25,7 +25,11 @@ Uso típico::
     print(eliminador.resumen_eliminadas())
 
 Los ``NaN`` se respetan en ``Winsorizador`` y ``TransformadorLog1p``: ninguna
-de las dos clases imputa. La imputación definitiva corresponde al Issue 5.
+de las dos clases imputa. La imputación es la del Issue 5 (``issue5.ipynb``):
+mediana o moda más un indicador ``<columna>_nulo`` en las columnas cuyo nulo es
+informativo. ``PreprocesadorNumerico`` recibe esos datos ya imputados y usa los
+indicadores para aprender los umbrales solo con valores observados (ver
+``enmascarar_imputados``).
 """
 
 import warnings
@@ -58,6 +62,9 @@ REDUNDANTES_CATEGORICAS = {
 
 # Límites de winsorización del Issue 6 (percentiles aprendidos en entrenamiento).
 LIMITES_WINSOR = (0.01, 0.99)
+
+# Sufijo de los indicadores de nulo que crea el imputador del Issue 5.
+SUFIJO_INDICADOR = '_nulo'
 
 
 def _verificar_sin_prohibidas(columnas):
@@ -263,6 +270,27 @@ def resumen_asimetria(X, limites=LIMITES_WINSOR):
         }
         filas.append(fila)
     return pd.DataFrame(filas).set_index('columna')
+
+
+def enmascarar_imputados(X, sufijo=SUFIJO_INDICADOR):
+    """Devuelve una copia de ``X`` con NaN donde el Issue 5 imputó un valor.
+
+    El imputador del Issue 5 rellena con la mediana y deja ``<columna>_nulo = 1``
+    en las filas imputadas. En columnas con mucho faltante (por ejemplo, 60 %
+    en el bloque que se registra desde 2016), esa mediana repetida concentra la
+    distribución en un solo valor: cambia los percentiles 1 y 99, la asimetría
+    y el IQR. Para medir la forma real de cada variable, las filas imputadas se
+    vuelven a marcar como NaN usando su indicador.
+
+    Las columnas sin indicador (las del Issue 5 con pocos nulos, o sin nulos)
+    se devuelven sin cambios. Los indicadores tampoco se modifican.
+    """
+    observadas = X.copy()
+    for indicador in [c for c in X.columns if c.endswith(sufijo)]:
+        columna = indicador[:-len(sufijo)]
+        if columna in observadas.columns and pd.api.types.is_numeric_dtype(observadas[columna]):
+            observadas[columna] = observadas[columna].astype(float).mask(X[indicador] == 1)
+    return observadas
 
 
 def definir_tratamientos(resumen, umbral_asimetria=1.0, reduccion_min=0.5,
@@ -554,7 +582,7 @@ class TransformadorLog1p(_TransformadorPorColumnas):
 
 def construir_preprocesador_numerico(columnas_log=(), columnas_winsor=(),
                                      escalador='robust', limites=LIMITES_WINSOR,
-                                     imputador='mediana'):
+                                     imputador=None):
     """Pipeline numérico: winsorización -> log1p -> imputación -> escalado.
 
     El orden de winsorización y ``log1p`` no cambia el resultado, porque recortar
@@ -562,10 +590,10 @@ def construir_preprocesador_numerico(columnas_log=(), columnas_winsor=(),
     primero para que los percentiles queden en las unidades originales y sean
     fáciles de reportar.
 
-    ``imputador='mediana'`` añade un ``SimpleImputer`` provisional, necesario
-    para entrenar la regresión logística y el PCA. **No es la imputación
-    definitiva**: se reemplazará por la del Issue 5 pasando aquí ese imputador
-    (cualquier transformador de scikit-learn) o ``None`` para omitirlo.
+    ``imputador=None`` (por defecto) supone que los datos ya llegan imputados
+    por el Issue 5. ``'mediana'`` añade un ``SimpleImputer``, útil solo con
+    datos que aún tienen NaN; también acepta cualquier transformador de
+    scikit-learn.
 
     ``escalador`` puede ser ``'robust'``, ``'standard'`` o ``None``.
     """
@@ -591,29 +619,57 @@ def construir_preprocesador_numerico(columnas_log=(), columnas_winsor=(),
 class PreprocesadorNumerico(BaseEstimator, TransformerMixin):
     """Tratamiento numérico completo del Issue 6, decidido y ajustado en ``fit``.
 
-    En ``fit`` (solo con entrenamiento):
+    Recibe la salida del Issue 5: columnas ya imputadas más los indicadores
+    ``<columna>_nulo``. En ``fit`` (solo con entrenamiento):
 
     1. Toma las columnas numéricas de ``X``.
-    2. Calcula ``resumen_asimetria`` y aplica ``definir_tratamientos`` para
-       decidir qué columnas llevan winsorización y cuáles ``log1p``.
-    3. Ajusta ``construir_preprocesador_numerico`` con esas columnas.
+    2. Con ``enmascarar_imputados`` vuelve a NaN los valores que imputó el
+       Issue 5, para que la mediana repetida no distorsione la forma de la
+       distribución.
+    3. Sobre esos valores observados calcula ``resumen_asimetria`` y aplica
+       ``definir_tratamientos``. También aprende ahí los percentiles de la
+       winsorización y comprueba que no haya negativos donde va ``log1p``.
+    4. Ajusta el escalado sobre los datos que de verdad se transforman (con la
+       imputación del Issue 5 incluida).
+
+    Los indicadores ``_nulo`` y las demás columnas binarias no se recortan ni
+    se transforman con ``log1p``, pero sí se escalan. Como la imputación con la
+    mediana conmuta con el recorte por percentiles y con ``log1p`` (ambos son
+    crecientes y no mueven la mediana), el resultado de transformar los datos
+    imputados es el mismo que imputar después de transformar.
 
     ``transform`` aplica a validación o prueba exactamente los mismos
-    percentiles, columnas, medianas y escalas. Las columnas no numéricas se
-    descartan: su codificación queda fuera de este issue.
+    percentiles, columnas y escalas. Las columnas no numéricas se descartan:
+    su codificación queda fuera de este issue.
 
-    Es el punto de entrada pensado para el PCA (Issue 7). ``imputador`` acepta
-    ``'mediana'`` (provisional), otro transformador de scikit-learn (el del
-    Issue 5) o ``None``.
+    Parámetros
+    ----------
+    escalador : {'standard', 'robust', None}
+    limites : tuple(float, float)
+        Percentiles de la winsorización.
+    umbral_asimetria, reduccion_min : float
+        Reglas de ``definir_tratamientos`` para ``log1p``.
+    aplicar_winsor, aplicar_log : bool
+        Permiten apagar cada tratamiento (para comparar en validación).
+    imputador : None, 'mediana' o transformador de scikit-learn
+        ``None`` (por defecto): los datos ya vienen imputados por el Issue 5.
+        Si llegan NaN, ``StandardScaler`` los conserva.
+    sufijo_indicador : str or None
+        Sufijo de los indicadores del Issue 5. ``None`` desactiva el
+        enmascarado (todas las filas cuentan como observadas).
     """
 
     def __init__(self, escalador='standard', limites=LIMITES_WINSOR,
-                 umbral_asimetria=1.0, reduccion_min=0.5, imputador='mediana'):
+                 umbral_asimetria=1.0, reduccion_min=0.5, aplicar_winsor=True,
+                 aplicar_log=True, imputador=None, sufijo_indicador=SUFIJO_INDICADOR):
         self.escalador = escalador
         self.limites = limites
         self.umbral_asimetria = umbral_asimetria
         self.reduccion_min = reduccion_min
+        self.aplicar_winsor = aplicar_winsor
+        self.aplicar_log = aplicar_log
         self.imputador = imputador
+        self.sufijo_indicador = sufijo_indicador
 
     def fit(self, X, y=None):
         X = _a_dataframe(X)
@@ -621,17 +677,44 @@ class PreprocesadorNumerico(BaseEstimator, TransformerMixin):
         self.feature_names_in_ = np.asarray(X.columns, dtype=object)
         self.n_features_in_ = X.shape[1]
         self.columnas_ = list(X.select_dtypes('number').columns)
-        numericas = X[self.columnas_]
-        self.resumen_ = resumen_asimetria(numericas, self.limites)
+        datos = X[self.columnas_]
+        observadas = (datos if self.sufijo_indicador is None
+                      else enmascarar_imputados(datos, self.sufijo_indicador))
+        self.pct_imputado_ = (observadas.isna().mean() - datos.isna().mean()) * 100
+
+        self.resumen_ = resumen_asimetria(observadas, self.limites)
         self.tratamientos_ = definir_tratamientos(
             self.resumen_, self.umbral_asimetria, self.reduccion_min,
         )
-        self.columnas_log_ = list(self.tratamientos_.index[self.tratamientos_['log1p']])
-        self.columnas_winsor_ = list(self.tratamientos_.index[self.tratamientos_['winsor']])
-        self.pipeline_ = construir_preprocesador_numerico(
-            self.columnas_log_, self.columnas_winsor_, self.escalador,
-            self.limites, self.imputador,
-        ).fit(numericas)
+        self.columnas_log_ = (list(self.tratamientos_.index[self.tratamientos_['log1p']])
+                              if self.aplicar_log else [])
+        self.columnas_winsor_ = (list(self.tratamientos_.index[self.tratamientos_['winsor']])
+                                 if self.aplicar_winsor else [])
+
+        pasos = []
+        if self.columnas_winsor_:
+            winsor = Winsorizador(self.limites, self.columnas_winsor_).fit(observadas)
+            pasos.append(('winsorizacion', winsor))
+            datos, observadas = winsor.transform(datos), winsor.transform(observadas)
+        if self.columnas_log_:
+            log = TransformadorLog1p(self.columnas_log_).fit(observadas)
+            pasos.append(('log1p', log))
+            datos = log.transform(datos)
+        if self.imputador is not None:
+            imputador = (SimpleImputer(strategy='median').set_output(transform='pandas')
+                         if self.imputador == 'mediana' else self.imputador)
+            datos = imputador.fit_transform(datos)
+            pasos.append(('imputacion', imputador))
+        escaladores = {'robust': RobustScaler, 'standard': StandardScaler}
+        if self.escalador is not None:
+            if self.escalador not in escaladores:
+                raise ValueError(f'escalador debe ser uno de {list(escaladores)} o None')
+            escalador = escaladores[self.escalador]().set_output(transform='pandas')
+            escalador.fit(datos)
+            pasos.append(('escalado', escalador))
+        if not pasos:
+            pasos.append(('identidad', 'passthrough'))
+        self.pipeline_ = Pipeline(pasos).set_output(transform='pandas')
         return self
 
     def transform(self, X):
@@ -640,4 +723,4 @@ class PreprocesadorNumerico(BaseEstimator, TransformerMixin):
 
     def get_feature_names_out(self, input_features=None):
         check_is_fitted(self, 'pipeline_')
-        return self.pipeline_.get_feature_names_out()
+        return np.asarray(self.columnas_, dtype=object)

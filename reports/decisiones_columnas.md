@@ -108,33 +108,48 @@ Advertencia: muchas de estas columnas empezaron a registrarse en 2012 o a finale
 
 ## Outliers y transformaciones (Issue 6)
 
-Análisis en [`notebooks/issue6.ipynb`](../notebooks/issue6.ipynb), implementado en `Winsorizador`, `TransformadorLog1p` y `PreprocesadorNumerico` de [`src/features.py`](../src/features.py). Se aplica a las 73 columnas numéricas que quedan tras el Issue 3.
+Análisis en [`notebooks/issue6.ipynb`](../notebooks/issue6.ipynb), implementado en `Winsorizador`, `TransformadorLog1p`, `enmascarar_imputados` y `PreprocesadorNumerico` de [`src/features.py`](../src/features.py).
 
-Los percentiles, la elección de columnas, las medianas y las escalas se aprenden solo con entrenamiento. Validación y prueba los reciben sin reajustar.
+El notebook continúa la cadena: recibe la salida del Issue 5, ya sin las redundantes del Issue 3, con los nulos imputados y con indicadores de nulo. Trata sus **109 columnas numéricas**: 61 variables originales y 48 indicadores `<columna>_nulo`. Las 8 categóricas pasan sin cambios.
 
-**Pipeline final:** winsorización p1–p99 → `log1p` en las asimétricas → imputación provisional con la mediana → `StandardScaler`.
+**Pipeline final:** winsorización p1–p99 → `log1p` en las asimétricas → `StandardScaler`, aplicado sobre los datos imputados por el Issue 5. No se añade otra imputación.
+
+**Integración con el Issue 5:**
+
+- Las reglas y los percentiles se aprenden solo con los **valores observados** de entrenamiento. `enmascarar_imputados` usa los indicadores `_nulo` para volver a NaN los valores imputados.
+  - Sin este paso, la mediana imputada en las columnas del bloque de 2016 (60 % de los préstamos) anula el IQR y desplaza los percentiles. Por ejemplo, el p99 de `max_bal_bc` pasa de 24,374 a 19,404.
+  - Usar los valores observados cambia la decisión de `log1p` en 5 columnas: `open_il_12m`, `total_cu_tl`, `mths_since_recent_inq`, `num_bc_tl` y `num_tl_op_past_12m`.
+- Transformar los datos imputados es equivalente a transformar y luego imputar: la mediana no se mueve al recortar por percentiles ni al aplicar `log1p`.
+- Validación y prueba reciben los percentiles y las escalas de entrenamiento sin reajustar.
 
 **Reglas por columna** (función `definir_tratamientos`):
 
-- **Winsorización a p1–p99:** a toda variable no binaria. Ninguna de las 73 es binaria.
-- **`log1p`:** solo si la variable no tiene negativos, su asimetría (calculada tras recortar a p1–p99) supera 1, y el logaritmo la deja en la mitad o menos en valor absoluto.
+- **Binarias:** sin recorte ni logaritmo; solo se escalan.
+- **Winsorización a p1–p99:** a toda variable no binaria.
+- **`log1p`:** si la variable no tiene negativos, su asimetría (calculada tras recortar a p1–p99) supera 1, y el logaritmo la deja en la mitad o menos en valor absoluto.
 
 | Columna o grupo | Tratamiento | Motivo |
 |---|---|---|
-| `annual_inc`, `annual_inc_joint` | Winsorización + `log1p` | Asimetría cruda 43.0 por ingresos de hasta 9.5 millones; 229 préstamos con ingreso 0. Recortado a [18,000; 252,000]; el logaritmo baja la asimetría recortada de 1.72 a 0.09. |
-| `revol_bal`, `revol_bal_joint`, `total_rev_hi_lim`, `tot_hi_cred_lim`, `total_bal_ex_mort`, `avg_cur_bal`, `tot_coll_amt` | Winsorización + `log1p` | Saldos y límites con cola larga (máximo de 13 a 1,067 veces el p99) y topes del buró (9,999,999). El logaritmo deja la asimetría recortada entre −1 y 0.5, salvo `tot_coll_amt` (de 5.86 a 2.14, por su 85 % de ceros). |
-| Conteos de cuentas y consultas: `open_acc_6m`, `open_act_il`, `open_il_12m`, `open_il_24m`, `open_rv_12m`, `open_rv_24m`, `inq_fi`, `inq_last_12m`, `total_cu_tl`, `num_actv_bc_tl`, `num_actv_rev_tl`, `num_bc_sats`, `num_il_tl`, `num_op_rev_tl`, `num_rev_accts`, `mort_acc`, `sec_app_inq_last_6mths`, `sec_app_mort_acc`, `sec_app_num_rev_accts`, `sec_app_open_act_il` | Winsorización + `log1p` | Asimetría recortada de 1.0 a 2.3, que el logaritmo deja por debajo de 0.9. |
+| `annual_inc` | Winsorización + `log1p` | Asimetría cruda 43.0 por ingresos de hasta 9.5 millones; 229 préstamos con ingreso 0. Recortado a [18,000; 252,000]; el logaritmo baja la asimetría recortada de 1.72 a 0.09. |
+| `revol_bal`, `total_rev_hi_lim`, `tot_hi_cred_lim`, `total_bal_ex_mort`, `avg_cur_bal`, `tot_coll_amt` | Winsorización + `log1p` | Saldos y límites con cola larga (máximo de 12 a 1,067 veces el p99) y topes del buró (9,999,999). El logaritmo deja la asimetría recortada entre −1 y 0.5, salvo `tot_coll_amt` (de 5.86 a 2.14, por su 85 % de ceros). |
+| Conteos de cuentas y consultas: `open_acc_6m`, `open_act_il`, `open_il_12m`, `open_il_24m`, `open_rv_12m`, `open_rv_24m`, `inq_fi`, `inq_last_12m`, `total_cu_tl`, `num_actv_bc_tl`, `num_actv_rev_tl`, `num_bc_sats`, `num_il_tl`, `num_op_rev_tl`, `num_rev_accts`, `mort_acc` | Winsorización + `log1p` | Asimetría recortada de 1.0 a 2.3, que el logaritmo reduce a la mitad o menos. |
 | Meses desde el último evento: `mths_since_rcnt_il`, `mths_since_recent_bc`, `mo_sin_rcnt_rev_tl_op`, `mo_sin_rcnt_tl` | Winsorización + `log1p` | Asimetría recortada de 2.3 a 2.8, que el logaritmo deja por debajo de 0.3. |
-| `dti`, `dti_joint` | Solo winsorización | `dti` tiene un valor −1, 23 centinelas 999 y 330 valores mayores a 100 %, todos imposibles. Recortado a [1.76; 38.46]. Su asimetría recortada es 0.24, así que no necesita logaritmo; además, `log1p` no admite el −1. |
-| `revol_util`, `bc_util`, `all_util`, `il_util`, `sec_app_revol_util`, `percent_bc_gt_75`, `pct_tl_nvr_dlq` | Solo winsorización | Porcentajes casi simétricos o con asimetría negativa. `revol_util` tiene 3,026 valores mayores a 100 % (hasta 366.6) y se recorta a [1.1; 98.3]. |
-| `fico_range_low`, `sec_app_fico_range_low` | Solo winsorización | Rango estrecho (615–845); el logaritmo apenas cambia la asimetría (1.19 → 1.08). |
-| Conteos con muchos ceros: `inq_last_6mths`, `pub_rec`, `pub_rec_bankruptcies`, `delinq_2yrs`, `tax_liens`, `collections_12_mths_ex_med`, `num_tl_90g_dpd_24m`, `num_accts_ever_120_pd`, `sec_app_chargeoff_within_12_mths`, `sec_app_collections_12_mths_ex_med` | Solo winsorización | Su asimetría viene de la masa en cero, y el logaritmo no la reduce a la mitad. El recorte a p99 (por ejemplo, `pub_rec` ≤ 2) limita los extremos (hasta 86). |
+| `dti` | Solo winsorización | Un valor −1, 23 centinelas 999 y 330 valores mayores a 100 %, todos imposibles. Recortado a [1.76; 38.45]. Su asimetría recortada es 0.24, así que no necesita logaritmo; además, `log1p` no admite el −1. |
+| `loan_amnt` | Solo winsorización | La incluye la cadena desde el Issue 2 (`incluir_condicionales=True`). Asimetría recortada de 0.75. |
+| `revol_util`, `bc_util`, `all_util`, `il_util`, `percent_bc_gt_75`, `pct_tl_nvr_dlq` | Solo winsorización | Porcentajes casi simétricos o con asimetría negativa. `revol_util` tiene 3,026 valores mayores a 100 % (hasta 366.6) y se recorta a [1.1; 98.3]. |
+| `fico_range_low` | Solo winsorización | Rango estrecho (615–845); el logaritmo apenas cambia la asimetría (1.19 → 1.08). |
+| Conteos con muchos ceros: `inq_last_6mths`, `pub_rec`, `pub_rec_bankruptcies`, `delinq_2yrs`, `tax_liens`, `collections_12_mths_ex_med`, `num_tl_90g_dpd_24m`, `num_accts_ever_120_pd` | Solo winsorización | Su asimetría viene de la masa en cero, y el logaritmo no la reduce a la mitad. El recorte a p99 (por ejemplo, `pub_rec` ≤ 2) limita los extremos (hasta 86). |
 | `max_bal_bc`, `bc_open_to_buy`, `total_bc_limit`, `total_il_high_credit_limit` | Solo winsorización | El logaritmo invierte la asimetría y la empeora (por ejemplo, `max_bal_bc`: 1.68 → −3.11), por los ceros. |
-| Resto: `open_acc`, `total_acc`, `num_bc_tl`, `num_tl_op_past_12m`, `acc_open_past_24mths`, `sec_app_open_acc`, `mo_sin_old_il_acct`, `mo_sin_old_rev_tl_op`, `mths_since_last_delinq`, `mths_since_last_record`, `mths_since_last_major_derog`, `mths_since_recent_bc_dlq`, `mths_since_recent_inq`, `mths_since_recent_revol_delinq`, `sec_app_mths_since_last_major_derog` | Solo winsorización | Asimetría recortada ≤ 1. |
-| Todas | `StandardScaler` | Con las 73 variables, `RobustScaler` no converge (1000 iteraciones) y da ROC-AUC de 0.593 a 0.655. En 40 columnas el IQR es 0 —conteos con muchos ceros, o columnas con más de 50 % de nulos imputadas con la mediana—, así que no las escala; `max_bal_bc` queda con desviación 3,086. El PCA (Issue 7) además necesita varianza 1 en todas las columnas. |
-| Todas | Imputación con la mediana (provisional) | Solo para entrenar y comparar. Se reemplaza con `PreprocesadorNumerico(imputador=...)` cuando cierre el Issue 5; la winsorización y el logaritmo conservan los NaN. |
+| `mths_since_recent_inq`, `num_bc_tl`, `num_tl_op_past_12m` | Solo winsorización | Con los valores observados, el logaritmo no reduce su asimetría a la mitad. Con los datos imputados se habría aplicado `log1p` (ver arriba). |
+| Resto: `open_acc`, `total_acc`, `acc_open_past_24mths`, `mo_sin_old_il_acct`, `mo_sin_old_rev_tl_op`, `mths_since_last_delinq`, `mths_since_last_record`, `mths_since_last_major_derog`, `mths_since_recent_bc_dlq`, `mths_since_recent_revol_delinq` | Solo winsorización | Asimetría recortada ≤ 1. |
+| 48 indicadores `<columna>_nulo` del Issue 5 | Sin transformación (binarias) | Valen 0 o 1, así que no tienen extremos. Solo se escalan. |
+| Las 109 | `StandardScaler` | Con las 109 variables, `RobustScaler` no converge (1000 iteraciones) en ninguna configuración y queda entre 0.007 y 0.033 de ROC-AUC por debajo. En 75 columnas el IQR es 0 —los 48 indicadores, conteos con muchos ceros y columnas imputadas en más del 50 %—, así que no las escala; `max_bal_bc` queda con desviación 3,086. El PCA (Issue 7) además necesita varianza 1 en todas las columnas. |
+
+En total: 27 columnas con winsorización + `log1p`, 34 solo con winsorización y 48 binarias sin transformar. Todas se escalan.
 
 **No se eliminan filas con outliers:** cambiaría la población del Issue 2, y en producción llegarían solicitudes con esos valores. Cada variable recorta entre el 1 % y el 2 % de sus valores.
+
+**Observación para los Issues 5 y 7:** de los 48 indicadores de nulo, solo 24 son distintos. Hay 5 grupos de copias exactas, porque bloques de columnas comparten el patrón de nulos; el mayor tiene 13 indicadores del buró (`total_rev_hi_lim_nulo`, `tot_coll_amt_nulo`, …). No afectan a la regresión logística, pero en el PCA un bloque de 13 copias aporta 13 veces la misma varianza. Conviene dejar uno por grupo antes de ajustar el PCA.
 
 Comparación en validación (regresión logística, `max_iter=1000`):
 
@@ -142,11 +157,13 @@ Comparación en validación (regresión logística, `max_iter=1000`):
 |---|---|---|---|
 | Baseline (9) | Sin tratar + `StandardScaler` (referencia) | 0.6336 | 0.2855 |
 | Baseline (9) | Winsorización + `log1p` + `StandardScaler` | 0.6362 | 0.2881 |
-| Numéricas del Issue 3 (73) | Sin tratar + `StandardScaler` | 0.6565 | 0.3090 |
-| Numéricas del Issue 3 (73) | Solo `log1p` + `StandardScaler` | 0.6586 | 0.3101 |
-| Numéricas del Issue 3 (73) | Solo winsorización + `StandardScaler` | 0.6586 | 0.3141 |
-| Numéricas del Issue 3 (73) | **Winsorización + `log1p` + `StandardScaler` (elegido)** | **0.6607** | **0.3153** |
-| Numéricas del Issue 3 (73) | Winsorización + `log1p` + `RobustScaler` (no converge) | 0.6547 | 0.3092 |
+| Numéricas de la cadena (109) | Sin tratar + `StandardScaler` | 0.6832 | 0.3386 |
+| Numéricas de la cadena (109) | Solo `log1p` + `StandardScaler` | 0.6858 | 0.3401 |
+| Numéricas de la cadena (109) | Solo winsorización + `StandardScaler` | 0.6858 | 0.3444 |
+| Numéricas de la cadena (109) | **Winsorización + `log1p` + `StandardScaler` (elegido)** | **0.6883** | **0.3468** |
+| Numéricas de la cadena (109) | Winsorización + `log1p` + `RobustScaler` (no converge) | 0.6770 | 0.3360 |
+
+El salto frente al baseline (0.6336 → 0.6832 sin tratar) se debe a usar todas las numéricas de la cadena, incluidos los indicadores del Issue 5 y `loan_amnt`. La mejora atribuible a este issue es de 0.6832 / 0.3386 a 0.6883 / 0.3468.
 
 ## PCA (Issue 7)
 
