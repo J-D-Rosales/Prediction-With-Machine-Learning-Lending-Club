@@ -63,7 +63,7 @@ Los notebooks forman una cadena: cada uno empieza ejecutando el anterior y deja 
 | `issue2.ipynb` | — | Datos de `src/data.py`, partición 64/16/20; sin columnas con más de 90 % de nulos, casi constantes, `emp_title`, `title` ni `zip_code`. |
 | `issue3.ipynb` | `%run issue2.ipynb` | Sin las columnas redundantes. |
 | `issue4.ipynb` | `%run issue3.ipynb` | La tabla `tabla` con la `decisión` por columna con nulos ("Imputar", "Imputar + indicador" o "Evaluar"). Los datos no cambian. |
-| `issue5.ipynb` | `%run issue4.ipynb` | Base, por desarrollar: columnas imputadas, con indicadores de nulo y sin las que se decida eliminar. |
+| `issue5.ipynb` | `%run issue4.ipynb` | Columnas imputadas (mediana o moda) y 48 indicadores `<columna>_nulo`. |
 | `issue6.ipynb` | `%run issue5.ipynb` | Numéricas con winsorización, `log1p` y `StandardScaler`; categóricas sin cambios. |
 | `issue7.ipynb` | `%run issue6.ipynb` | Análisis PCA; no se aplica (no mejora en validación). Deja los datos del Issue 6 sin cambios como dataset final para los modelos. |
 
@@ -71,7 +71,6 @@ Reglas de la cadena:
 
 - Cada notebook **solo** modifica `X_train`, `X_val` y `X_test` en su última sección ("Salida para el Issue N"). Las variables de trabajo intermedias usan otros nombres (por ejemplo, `X_val_num`) para no pisar las de la cadena.
 - Todo lo que se aprende (columnas, medianas, percentiles, escalas, PCA) se ajusta con `X_train` y se aplica sin cambios a `X_val` y `X_test`; las tres terminan con las mismas columnas.
-- `issue5.ipynb` es una base: solo está encadenada y deja pasar los datos sin cambios hasta que se desarrolle.
 - Pendiente para el modelado: codificar las columnas categóricas (`term`, `home_ownership`, `purpose`, `emp_length`, `addr_state`, etc.), que ningún issue cubre todavía.
 
 ### Decisión tomada: LDA queda fuera

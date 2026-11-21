@@ -167,31 +167,36 @@ El salto frente al baseline (0.6336 → 0.6832 sin tratar) se debe a usar todas 
 
 ## PCA (Issue 7)
 
-Análisis en [`notebooks/issue7.ipynb`](../notebooks/issue7.ipynb). PCA se ajusta solo con entrenamiento sobre las 61 numéricas que entrega la cadena tras el Issue 6 (sin nulos, con media 0 y varianza 1). Las 8 categóricas no entran y `issue_d` no está en la cadena.
+Análisis en [`notebooks/issue7.ipynb`](../notebooks/issue7.ipynb), sobre la salida del Issue 6 (que ya incluye la imputación del Issue 5). La cadena entrega 109 numéricas: 61 continuas y 48 indicadores `<columna>_nulo`. PCA se ajusta solo con entrenamiento sobre las **61 continuas** (sin nulos, con media 0 y varianza 1). Los indicadores se deduplican (24 distintos, ver la observación del Issue 6) y pasan sin PCA. Las 8 categóricas no entran y `issue_d` no está en la cadena.
 
 | Decisión | Valor | Motivo |
 |---|---|---|
-| ¿Se aplica PCA al dataset final? | **No** | En validación, ningún número de componentes mejora la regresión logística con las numéricas originales. |
+| ¿Se aplica PCA al dataset final? | **No** | En validación, ningún número de componentes mejora la regresión logística con las variables originales. |
+| Entrada del PCA | 61 continuas; los 24 indicadores únicos pasan aparte | Los indicadores son binarios. Al incluirlos (control con 85 columnas), Kaiser pide 21 componentes y rinde peor (ROC-AUC 0.6420), y el 95 % de la varianza pide 46. |
+| Indicadores de nulo duplicados | 48 → 24 solo para el PCA | 5 grupos de copias exactas (el mayor, 13 indicadores del buró encabezados por `tot_coll_amt_nulo`). Quitarlos no cambia la regresión logística (0.6883 con 109 o con 85 columnas), así que la salida los conserva. |
 | Componentes para 80 / 90 / 95 / 99 % de la varianza | 22 / 32 / 41 / 53 de 61 | La varianza está repartida: PC1 explica solo el 14.8 %. El Issue 3 ya quitó los pares con correlación ≥ 0.9. |
-| Criterio de Kaiser (autovalor > 1) | 17 componentes (73.5 %) | ROC-AUC 0.6384, frente a 0.6843 sin PCA. |
-| Componente más predictivo | PC4 (6.2 % de la varianza), AUC univariado 0.587 | Uso del crédito rotativo (`bc_util`, `revol_util`, `percent_bc_gt_75`) frente a `fico_range_low`. PC1 tiene AUC ≈ 0.50 y PC25 (1.1 % de la varianza) es el segundo más predictivo, así que cortar por varianza descarta señal. |
+| Criterio de Kaiser (autovalor > 1) | 17 componentes (73.5 %) | ROC-AUC 0.6466, frente a 0.6883 sin PCA. |
+| Componente más predictivo | PC4 (6.2 % de la varianza), AUC univariado 0.587 | Uso del crédito rotativo (`bc_util`, `revol_util`, `percent_bc_gt_75`) frente a `fico_range_low`. PC1 tiene AUC ≈ 0.50 y PC25 (1.1 % de la varianza; `open_act_il`, `loan_amnt`, `dti`) es el segundo más predictivo, así que cortar por varianza descarta señal. |
 | LDA | No se aplica | Con target binario produce un solo componente (decisión del Issue 1). |
 
 Interpretación de los primeros componentes: PC1, tamaño del historial (`open_acc`, `total_acc`, `num_rev_accts`); PC2, actividad reciente (meses desde la última apertura frente a cuentas abiertas en 12–24 meses); PC3, préstamos a plazos (`open_il_*`, `num_il_tl`, `all_util`); PC4, uso del crédito frente a FICO; PC5, morosidad pasada (`delinq_2yrs`, `mths_since_*delinq*`).
 
-Comparación en validación (regresión logística, `max_iter=1000`, solo numéricas):
+Comparación en validación (regresión logística, `max_iter=1000`, solo numéricas). En las filas de PCA, k cuenta los componentes; el modelo usa además los 24 indicadores únicos.
 
 | Variables | k | Varianza | ROC-AUC | PR-AUC |
 |---|---|---|---|---|
-| **Numéricas originales (elegido)** | 61 | 100 % | **0.6843** | **0.3419** |
-| PCA, primeros k (Kaiser) | 17 | 73.5 % | 0.6384 | 0.2940 |
-| PCA, primeros k | 22 | 80.6 % | 0.6442 | 0.2976 |
-| PCA, primeros k | 32 | 90.1 % | 0.6764 | 0.3345 |
-| PCA, primeros k | 41 | 95.5 % | 0.6822 | 0.3400 |
-| PCA, k por AUC univariado en entrenamiento | 20 | 53.5 % | 0.6758 | 0.3316 |
-| PCA, k por AUC univariado en entrenamiento | 41 | 87.6 % | 0.6833 | 0.3413 |
-| PCA, todos los componentes | 61 | 100 % | 0.6843 | 0.3419 |
+| Numéricas de la cadena (109) | — | 100 % | 0.6883 | 0.3468 |
+| **61 continuas + 24 indicadores únicos (elegido)** | — | 100 % | **0.6883** | **0.3468** |
+| PCA, primeros k (Kaiser) | 17 | 73.5 % | 0.6466 | 0.3015 |
+| PCA, primeros k | 22 | 80.6 % | 0.6534 | 0.3075 |
+| PCA, primeros k | 32 | 90.1 % | 0.6820 | 0.3404 |
+| PCA, primeros k | 41 | 95.5 % | 0.6868 | 0.3449 |
+| PCA, k por AUC univariado en entrenamiento | 20 | 53.5 % | 0.6824 | 0.3401 |
+| PCA, k por AUC univariado en entrenamiento | 41 | 87.6 % | 0.6871 | 0.3448 |
+| PCA, todos los componentes | 61 | 100 % | 0.6883 | 0.3468 |
+| Control: PCA sobre continuas + indicadores (Kaiser) | 21 | 78.2 % | 0.6420 | 0.2979 |
+| Control: PCA sobre continuas + indicadores | 46 | 95.0 % | 0.6856 | 0.3445 |
 
-**Salida:** `issue7.ipynb` deja `X_train`, `X_val` y `X_test` sin cambios respecto del Issue 6. Es el dataset final para los modelos; falta codificar las categóricas.
+**Salida:** `issue7.ipynb` deja `X_train`, `X_val` y `X_test` sin cambios respecto del Issue 6, con los 48 indicadores. Es el dataset final para los modelos; falta codificar las categóricas.
 
-**Por revisar:** repetir cuando cierre el Issue 5 (cambia la imputación), y si se prueban modelos sensibles a la dimensión (k-NN, SVM con kernel). La cadena incluye `loan_amnt`, que `src/data.py` marca como condicional: el equipo debe confirmar si entra.
+**Por revisar:** repetir la comparación si se prueban modelos sensibles a la dimensión (k-NN, SVM con kernel). La cadena incluye `loan_amnt`, que la propuesta deja como condicional: el equipo debe confirmar si entra.
