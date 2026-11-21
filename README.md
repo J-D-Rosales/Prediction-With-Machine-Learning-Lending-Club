@@ -24,9 +24,9 @@ Prediction-With-Machine-Learning-Lending-Club/
 │   ├── issue2.ipynb                    # Issue 2: carga la base común
 │   ├── issue3.ipynb                    # Issue 3: columnas redundantes
 │   ├── issue4.ipynb                    # Issue 4: nulos MCAR y decisión
-│   ├── issue5.ipynb                    # Issue 5: imputación (base)
+│   ├── issue5.ipynb                    # Issue 5: imputación e indicadores de nulo
 │   ├── issue6.ipynb                    # Issue 6: outliers y transformaciones
-│   └── issue7.ipynb                    # Issue 7: PCA (base)
+│   └── issue7.ipynb                    # Issue 7: PCA (no se aplica) y dataset final
 ├── src/
 │   ├── data.py                         # Base común: target y partición
 │   └── features.py                     # Eliminación de redundantes y preprocesamiento numérico
