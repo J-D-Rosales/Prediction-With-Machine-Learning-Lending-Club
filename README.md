@@ -20,7 +20,8 @@ Prediction-With-Machine-Learning-Lending-Club/
 │   └── Readme.md
 ├── notebooks/
 │   ├── 01_exploración_inicial.ipynb    # EDA y baseline histórico
-│   ├── 02_baseline_sin_leakage.ipynb   # Baseline vigente
+│   ├── 02_baseline_sin_leakage.ipynb   # Baseline de la propuesta (9 variables)
+│   ├── 03_modelo_final.ipynb           # Modelo final: codificación, modelos, prueba e interpretabilidad
 │   ├── issue2.ipynb                    # Issue 2: carga la base común
 │   ├── issue3.ipynb                    # Issue 3: columnas redundantes
 │   ├── issue4.ipynb                    # Issue 4: nulos MCAR y decisión
@@ -68,6 +69,20 @@ python -m pip install -r requirements.txt
 ## Datos
 
 Sigue las [instrucciones de descarga](data/Readme.md). Para ejecutar el baseline vigente solo se necesita `data/accepted_2007_to_2018Q4.csv.gz`; el archivo de solicitudes rechazadas no interviene en ese modelo.
+
+## Resultados del modelo final
+
+[`notebooks/03_modelo_final.ipynb`](notebooks/03_modelo_final.ipynb) parte del dataset que deja la cadena de notebooks (`issue2` → `issue7`), codifica las variables categóricas y compara modelos en validación. El conjunto de prueba se evalúa una sola vez, al final.
+
+| Modelo | ROC-AUC prueba | PR-AUC prueba |
+|---|---|---|
+| Baseline de la propuesta: regresión logística, 9 variables | 0.6331 | 0.2848 |
+| Regresión logística, todas las variables de la cadena | 0.7185 | 0.3906 |
+| **Gradient boosting (`HistGradientBoostingClassifier`)** | **0.7354** | **0.4122** |
+
+Al umbral 0.2234, elegido en validación maximizando F1, el modelo final detecta el 61.7 % de los `Charged Off` con una precisión de 35.5 %. Las conclusiones, limitaciones y decisiones pendientes están al final del notebook.
+
+Para ejecutarlo hace falta haber corrido antes la cadena (`notebooks/issue7.ipynb`, que genera los checkpoints en `data/checkpoints/`). Con los checkpoints, tarda unos 50 minutos, casi todo en la búsqueda de hiperparámetros.
 
 ## Ejecutar el baseline vigente
 
