@@ -200,3 +200,31 @@ Comparación en validación (regresión logística, `max_iter=1000`, solo numér
 **Salida:** `issue7.ipynb` deja `X_train`, `X_val` y `X_test` sin cambios respecto del Issue 6, con los 48 indicadores. Es el dataset final para los modelos; falta codificar las categóricas.
 
 **Por revisar:** repetir la comparación si se prueban modelos sensibles a la dimensión (k-NN, SVM con kernel). La cadena incluye `loan_amnt`, que la propuesta deja como condicional: el equipo debe confirmar si entra.
+
+## Variables condicionales `term` y `loan_amnt` (modelo final)
+
+La auditoría (sección 7 de la propuesta) dejó `term` y `loan_amnt` como condicionales: solo son válidas si el valor registrado ya existía antes de que Lending Club aprobara el préstamo. El diccionario de Lending Club advierte que `loan_amnt` puede reflejar una reducción hecha por el área de crédito; para `term` no hay advertencia, pero tampoco se confirmó que lo elija el solicitante. La cadena las incluye (`incluir_condicionales=True`) y en `03_modelo_final.ipynb` son las dos variables más importantes por permutación (`term_60` 0.047, `loan_amnt` 0.027).
+
+Para medir cuánto depende el modelo de ellas, se reentrenó el gradient boosting con la mejor configuración del modelo final (`learning_rate=0.03`, `max_leaf_nodes=127`, `min_samples_leaf=2000`, `l2_regularization=0`, `max_features=0.8`, early stopping con 10 % de entrenamiento) quitando cada una y ambas. El umbral se elige por máximo F1 en validación.
+
+| Gradient boosting | Columnas | ROC-AUC val | ROC-AUC test | PR-AUC test | Recall test | Precisión test |
+|---|---|---|---|---|---|---|
+| Completo | 186 | 0.7338 | **0.7354** | **0.4122** | 61.7 % | 35.5 % |
+| Sin `loan_amnt` | 185 | 0.7253 | 0.7270 | 0.4015 | 59.1 % | 35.4 % |
+| Sin `term` | 185 | 0.7163 | 0.7179 | 0.3859 | 66.2 % | 32.4 % |
+| Sin `term` ni `loan_amnt` | 184 | 0.6922 | 0.6942 | 0.3553 | 64.0 % | 30.6 % |
+| *Referencia: `grade` de Lending Club* | — | — | *0.6797* | *0.3107* | — | — |
+| *Referencia: logística solo numéricas* | 109 | *0.6883* | — | — | — | — |
+
+- **La pérdida no es aditiva.** Por separado cuestan 0.008 (`loan_amnt`) y 0.018 (`term`) de ROC-AUC; juntas, 0.041. Cada una compensa en parte a la otra; una lectura plausible (no verificada) es que juntas aproximan el tamaño de la cuota mensual.
+- **Sin ambas, el modelo casi vuelve a la logística solo con numéricas** (0.6922 frente a 0.6883 en validación) y queda poco por encima de `grade`. El aporte de las categóricas y del gradient boosting depende en buena parte de estas dos variables.
+- El recall y la precisión cambian sobre todo porque el umbral se mueve; la comparación entre variantes se hace con ROC-AUC y PR-AUC.
+- La variante sin ambas agotó `max_iter=1000` sin activar early stopping; más iteraciones podrían subirla algo, pero no cerrarían la brecha.
+
+**Por decidir en equipo:**
+
+| Opción | ROC-AUC test | Cuándo elegirla |
+|---|---|---|
+| Mantener ambas | 0.7354 | Si se confirma que `term` y `loan_amnt` son lo que el solicitante pide en la solicitud. |
+| Mantener `term`, quitar `loan_amnt` | 0.7270 | Si solo `loan_amnt` queda en duda (es la única con advertencia explícita de recortes). |
+| Quitar ambas | 0.6942 | Si no se puede confirmar ninguna; el 0.7354 se reportaría como cota superior con posible fuga. |
