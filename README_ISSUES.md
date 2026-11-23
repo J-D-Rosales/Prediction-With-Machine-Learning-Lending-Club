@@ -261,3 +261,217 @@ Tareas:
 **Entregable:** `notebooks/issue7.ipynb`, una conclusión sobre si conviene usar PCA en el modelado y el dataset final (`X_train`, `X_val`, `X_test`) para los modelos.
 
 **Se cierra cuando:** la comparación está hecha y la conclusión está registrada, aunque sea que PCA no mejora al baseline.
+
+---
+
+# Issues de la etapa de modelado
+
+Segunda etapa, después del análisis de datos. Parte del dataset final que deja `issue7.ipynb` y termina en el entregable 2, que es el que se califica. Se mantiene la numeración de esta lista; GitHub asignará otros números.
+
+| Issue | Título | Responsable | Depende de |
+|---|---|---|---|
+| 8 | Modelado: plan general | Todo el equipo | — |
+| 9 | Codificación de categóricas y decisión sobre `loan_amnt` | Por asignar | Issue 7 (PR #14) |
+| 10 | Modelos de árboles: Random Forest y gradient boosting | Por asignar | Issue 9 |
+| 11 | Umbral, calibración y evaluación final en prueba | Por asignar | Issue 10 |
+| 12 | Comprobación temporal por cohortes | Por asignar | Issue 2 (puede empezar ya) |
+| 13 | Interpretabilidad (SHAP) y análisis de errores | Por asignar | Issue 11 |
+| 14 | Informe final y presentación (entregable 2) | Todo el equipo | Issues 9 al 13 |
+
+---
+
+## Issue 8
+
+**Título:** Modelado: plan general
+
+**Responsable:** Todo el equipo
+
+**Descripción:**
+
+### Objetivo
+
+Pasar del dataset preparado a un modelo final evaluado y explicado, cumpliendo lo que promete `proposal.md`:
+
+- Sección 9: ROC-AUC como métrica principal, PR-AUC como secundaria, y recall y precisión de `Charged Off` a un umbral fijado en validación.
+- Sección 10: prueba evaluada una sola vez y comprobación temporal con `issue_d`.
+- Sección 13: modelos avanzados (Random Forest, XGBoost o LightGBM), optimización de hiperparámetros, análisis de errores e interpretabilidad (SHAP).
+
+### Issues que se resuelven
+
+- [ ] Issue 9: Codificación de categóricas y decisión sobre `loan_amnt`
+- [ ] Issue 10: Modelos de árboles
+- [ ] Issue 11: Umbral, calibración y evaluación final en prueba
+- [ ] Issue 12: Comprobación temporal por cohortes
+- [ ] Issue 13: Interpretabilidad y análisis de errores
+- [ ] Issue 14: Informe final y presentación
+
+### Orden de trabajo
+
+La cadena sigue: 9 → 10 → 11 → 13. El Issue 12 va en paralelo, porque su primera parte solo necesita la base del Issue 2. El 14 cierra la etapa.
+
+### Reglas para todos
+
+- Se mantienen las reglas de la cadena de notebooks (ver Issue 1): cada notebook empieza con el checkpoint del anterior, solo modifica `X_train`, `X_val` y `X_test` en su última sección y guarda su propio checkpoint.
+- Todo lo que se aprende (codificaciones, hiperparámetros, umbral) se ajusta con entrenamiento o se elige en validación.
+- **El conjunto de prueba se usa una sola vez, en el Issue 11.** Ningún otro issue calcula métricas en prueba.
+- Cada comparación reporta ROC-AUC y PR-AUC en validación, contra la misma referencia: la regresión logística de la cadena (ROC-AUC 0.6883, PR-AUC 0.3468 con solo numéricas).
+- Las decisiones se registran en `reports/decisiones_columnas.md`, o en `reports/decisiones_modelado.md` si no son sobre columnas.
+
+### Este issue se cierra cuando
+
+- Los issues 9 al 14 están cerrados.
+- El modelo final, su umbral y sus métricas en prueba están en el informe.
+
+---
+
+## Issue 9
+
+**Título:** Codificación de categóricas y decisión sobre `loan_amnt`
+
+**Responsable:** Por asignar
+
+**Depende de:** Issue 7 (PR #14). Si el PR aún no se fusiona, se puede empezar desde el checkpoint del Issue 6, que entrega los mismos datos.
+
+**Descripción:**
+
+La cadena deja 8 columnas categóricas sin codificar, y hoy ningún modelo las usa: `term`, `emp_length`, `home_ownership`, `verification_status`, `purpose`, `addr_state`, `earliest_cr_line` y `application_type`. Este issue las convierte en numéricas y cierra la decisión pendiente sobre `loan_amnt`.
+
+Tareas:
+
+- **Categóricas con pocas categorías** (`term`, `home_ownership`, `verification_status`, `purpose`, `application_type`): one-hot, con las categorías aprendidas en entrenamiento y `handle_unknown='ignore'`. Agrupar en "otros" las categorías con muy pocos préstamos (por ejemplo, `home_ownership` = `ANY`, `NONE` u `OTHER`).
+- **`emp_length`:** convertir a número de años (0 a 10) en vez de one-hot, porque es ordinal. Su indicador de nulo ya existe desde el Issue 5.
+- **`addr_state`** (unas 50 categorías): comparar en validación one-hot frente a target encoding. El target encoding debe ajustarse con validación cruzada dentro de entrenamiento para no filtrar el target. Recordar que `addr_state` es condicional en `analisis_variables.md` (uso geográfico): documentar la decisión.
+- **`earliest_cr_line`:** convertir a antigüedad del historial crediticio en meses, usando `issue_d` solo como fecha de referencia. `issue_d` sigue sin entrar como predictor. Verificar en `analisis_variables.md` que esta construcción no use información posterior a la solicitud.
+- **`loan_amnt`:** comparar en validación con y sin la variable, y decidir con el equipo si se queda. La propuesta la deja como condicional porque Lending Club puede reducir el monto. Si se queda, actualizar la sección 7 de `proposal.md`.
+- Comparar en validación la regresión logística con solo numéricas (0.6883 / 0.3468) frente a numéricas + categóricas codificadas.
+
+**Entregable:** `notebooks/issue9.ipynb` con su checkpoint, el codificador en `src/features.py` y las decisiones en `reports/decisiones_columnas.md`.
+
+**Se cierra cuando:** `X_train`, `X_val` y `X_test` son totalmente numéricos, con las mismas columnas en las tres particiones, y la decisión sobre `loan_amnt` está registrada.
+
+---
+
+## Issue 10
+
+**Título:** Modelos de árboles: Random Forest y gradient boosting
+
+**Responsable:** Por asignar
+
+**Depende de:** Issue 9
+
+**Descripción:**
+
+Entrenar modelos no lineales y compararlos con la regresión logística. En las revisiones de avance, el profesor pidió justamente comparar un modelo nuevo con la línea base.
+
+Tareas:
+
+- **Referencia:** regresión logística con el dataset del Issue 9, con y sin `class_weight='balanced'`.
+- **Random Forest** (`RandomForestClassifier`): explorar `n_estimators`, `max_depth`, `min_samples_leaf` y `max_features`. Con 862,757 filas, conviene buscar hiperparámetros en una submuestra estratificada de entrenamiento y reentrenar el mejor con todo.
+- **Gradient boosting** (LightGBM o XGBoost): explorar `learning_rate`, `num_leaves` o `max_depth`, `min_child_samples`, `subsample` y `colsample_bytree`. Usar early stopping con validación. Probar `scale_pos_weight` por el desbalance.
+- Búsqueda con un presupuesto fijo (por ejemplo, búsqueda aleatoria de 30 a 50 configuraciones) y semilla `SEED`. Registrar el tiempo de entrenamiento de cada modelo.
+- Los árboles no necesitan escalado ni `log1p`; usar los datos de la cadena está bien, pero se puede comparar con las variables sin transformar si hay tiempo.
+- Tabla final: modelo, hiperparámetros elegidos, ROC-AUC y PR-AUC en validación, y tiempo.
+
+**Entregable:** `notebooks/issue10.ipynb`, la tabla comparativa en `reports/decisiones_modelado.md` y el modelo elegido guardado con `joblib` en `data/modelos/` (fuera de git).
+
+**Se cierra cuando:** hay un modelo elegido con hiperparámetros justificados y su ventaja (o falta de ventaja) sobre la regresión logística está medida en validación.
+
+---
+
+## Issue 11
+
+**Título:** Umbral, calibración y evaluación final en prueba
+
+**Responsable:** Por asignar
+
+**Depende de:** Issue 10
+
+**Descripción:**
+
+Cerrar el modelo y evaluarlo una sola vez en prueba, como promete la sección 10 de la propuesta.
+
+Tareas:
+
+- **Umbral:** elegirlo en validación. Comparar el que maximiza F1 (el criterio del baseline) con uno basado en costos: un `Charged Off` no detectado cuesta mucho más que rechazar a un buen pagador. Justificar el elegido.
+- **Calibración:** curva de calibración en validación. Si el modelo de árboles está mal calibrado, comparar `CalibratedClassifierCV` (isotónica o Platt) ajustada sin usar prueba.
+- **Evaluación en prueba**, una sola vez, del modelo final y de la regresión logística baseline: ROC-AUC, PR-AUC, recall, precisión y matriz de confusión al umbral fijado. Curvas ROC y PR de ambos en la misma figura.
+- Comparar con los valores de validación para detectar sobreajuste en la selección.
+
+**Entregable:** `notebooks/issue11.ipynb` y la tabla de métricas finales en `reports/decisiones_modelado.md`.
+
+**Se cierra cuando:** las métricas en prueba están reportadas y el umbral quedó fijado antes de calcularlas.
+
+---
+
+## Issue 12
+
+**Título:** Comprobación temporal por cohortes
+
+**Responsable:** Por asignar
+
+**Depende de:** Issue 2 para la primera parte (puede empezar ya); Issue 10 para la segunda.
+
+**Descripción:**
+
+La sección 10 de la propuesta promete medir la madurez de las cohortes antes de decidir un corte cronológico. No se usa 2018 de forma automática: solo el 11.37 % de sus préstamos tiene resultado definitivo.
+
+Tareas:
+
+- **Madurez por cohorte:** por año (o trimestre) de `issue_d`, y por separado para plazos de 36 y 60 meses, calcular qué proporción de los préstamos originales ya tiene resultado definitivo y su tasa de `Charged Off`. Se necesita el archivo completo, no solo los resueltos.
+- **Definir el corte:** elegir el último período con cohortes suficientemente maduras (por ejemplo, más del 90 % resueltas) y documentar por qué.
+- **Prueba de estabilidad:** reentrenar el modelo elegido en el Issue 10 con los préstamos anteriores al corte y evaluarlo en los posteriores. Comparar con la partición aleatoria.
+- Reportar también el ROC-AUC por año de emisión dentro de la partición de validación, para ver si el desempeño cambia con el tiempo.
+
+**Entregable:** `notebooks/issue12.ipynb` y la conclusión en `reports/decisiones_modelado.md`.
+
+**Se cierra cuando:** la tabla de madurez está hecha y la prueba temporal está ejecutada, o se justifica por qué no hay cohortes suficientes para hacerla.
+
+---
+
+## Issue 13
+
+**Título:** Interpretabilidad (SHAP) y análisis de errores
+
+**Responsable:** Por asignar
+
+**Depende de:** Issue 11
+
+**Descripción:**
+
+Explicar qué aprendió el modelo final y dónde se equivoca.
+
+Tareas:
+
+- **SHAP** (`TreeExplainer` para el modelo de árboles), sobre una muestra de validación: importancia global (gráfico *beeswarm*) y gráficos de dependencia de las 5 variables más importantes. Contrastar con los coeficientes de la regresión logística.
+- Comprobar que las variables más importantes tengan sentido crediticio y que ninguna sugiera leakage. Si aparece algo sospechoso, revisarlo contra la sección 8 de la propuesta.
+- **Análisis de errores** al umbral del Issue 11: perfil de falsos negativos y falsos positivos por `purpose`, `term`, año de emisión e ingreso.
+- **Comparación con Lending Club:** `grade` no es predictor, pero sí puede usarse para el análisis. Calcular el ROC-AUC de `grade` sobre los mismos préstamos y compararlo con el del modelo. Sirve para medir cuánto del riesgo que Lending Club detecta con información posterior recupera el modelo solo con la solicitud.
+
+**Entregable:** `notebooks/issue13.ipynb` y figuras en `reports/figures/`.
+
+**Se cierra cuando:** las figuras SHAP y el análisis de errores están listos para el informe.
+
+---
+
+## Issue 14
+
+**Título:** Informe final y presentación (entregable 2)
+
+**Responsable:** Todo el equipo
+
+**Depende de:** Issues 9 al 13
+
+**Descripción:**
+
+El profesor indicó que el entregable 2 es el que se califica, con entrega una semana antes de los exámenes finales. **Confirmar la fecha y el formato en Canvas.**
+
+Tareas:
+
+- Convertir `proposal.md` en el informe final, o crear `reports/informe_final.md`: problema, datos, decisiones de preparación (issues 2 al 7, incluido por qué no se aplican PCA ni LDA), modelos, métricas en prueba, comprobación temporal, interpretabilidad, limitaciones y conclusiones.
+- Actualizar el `README.md` con cómo reproducir la cadena completa y el modelo final.
+- Comprobar que la cadena se ejecuta desde cero en una sesión limpia (sin checkpoints).
+- Preparar la presentación y repartir las secciones entre los cuatro integrantes.
+
+**Entregable:** informe, README actualizado y presentación.
+
+**Se cierra cuando:** el entregable está enviado.
